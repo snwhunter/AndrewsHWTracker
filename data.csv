@@ -1,6 +1,6 @@
-Index,Date,Event,Class,Assignment,Andrew,Canvas,Verified
+Index,Date,Event,Class,Assignment,Andrew Status,Canvas Status,Verified
 Num,DateTime,Str,Str,Str,Chk,Chk,Chk
-1,1/28/2026,4.0 Worksheets [P02-Pre-Calculus B-Mock-S2],P02-Pre-Calculus B-Mock-S2,4.0 Worksheets,false,true,true
+1,1/28/2026,4.0 Worksheets [P02-Pre-Calculus B-Mock-S2],P02-Pre-Calculus B-Mock-S2,4.0 Worksheets,true,true,true
 2,1/28/2026,Forces Study Problem 2 [2526 Physics-Bregar-S2],2526 Physics-Bregar-S2,Forces Study Problem 2,true,true,true
 3,1/28/2026,WWI Contraversial Decisions [25/26 US History OWEN S2],25/26 US History OWEN S2,WWI Contraversial Decisions,true,true,
 4,1/28/2026,WWI Propaganda Poster [25/26 US History OWEN S2],25/26 US History OWEN S2,WWI Propaganda Poster,true,true,
