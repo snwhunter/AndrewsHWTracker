@@ -5,8 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Andrew HW Tracker</title>
 <style>
-body { font-family: Arial, sans-serif; margin:10px; }
-h1 { text-align: center; }
+body { font-family: Arial, sans-serif; margin:10px; position: relative; }
+h1 { text-align: center; margin-bottom: 5px; }
+#versionLabel {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #555;
+}
 #saveStatus { text-align:center; margin-bottom:10px; font-weight:bold; }
 .summary { background:#f4f6f8; padding:12px; border-radius:12px; margin-bottom:20px; }
 .summary li { font-weight:bold; padding:4px 0; }
@@ -22,8 +30,6 @@ th { background:#f0f0f0; }
 .card.past-due { background-color:#ffe5e5; }
 .card-row { margin-bottom:6px; }
 input[type="checkbox"] { width:22px; height:22px; }
-button { width:100%; padding:12px; font-size:16px; border-radius:10px; border:none; background:#2d6cdf; color:white; }
-button:active { background:#1e4fb8; }
 @media (max-width:768px) { .desktop-view { display:none; } }
 @media (min-width:769px) { .mobile-view { display:none; } }
 </style>
@@ -31,31 +37,35 @@ button:active { background:#1e4fb8; }
 <body>
 
 <h1>Andrew HW Tracker</h1>
+<div id="versionLabel">v1.0.0</div>
 <div id="saveStatus"></div>
 <div id="content"></div>
 
 <script>
+// ---- Version ----
+const VERSION = "v1.0.0";
+document.getElementById("versionLabel").textContent = VERSION;
+
 // ---- GitHub Token ----
 const GITHUB_TOKEN = "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";
 
 // ---- Load CSV ----
-async function loadCSV(){
+async function loadCSV() {
   const res = await fetch("https://snwhunter.github.io/AndrewsHWTracker/data.csv");
-  const text = await res.text();
-  return text;
+  return await res.text();
 }
 
 // ---- Parse CSV ----
 function parseCSV(text){
-  const lines = text.split("\n").slice(1); // skip 1 header row
-  const headers = text.split("\n")[0].split(",").map(h=>h.trim());
-  const data = lines.filter(l=>l.trim()!=="").map(line=>{
+  const lines = text.split("\n").filter(l => l.trim()!=="");
+  const headers = lines[0].split(",").map(h=>h.trim());
+  const data = lines.slice(1).map((line, idx)=>{
     const vals = line.split(",");
-    const obj = {};
+    const obj = { __row: idx }; // keep original row index
     headers.forEach((h,i)=>obj[h]=vals[i]?vals[i].trim():"");
     return obj;
   });
-  return data;
+  return { headers, data };
 }
 
 // ---- Group By Date ----
@@ -80,7 +90,7 @@ function isRowPastDue(row){
   );
 }
 
-// ---- Aggregate Summary ----
+// ---- Summary ----
 function aggregateStatusCounts(data){
   const today = new Date(); today.setHours(0,0,0,0);
   const counts = { andrew:0, canvas:0, verified:0 };
@@ -111,15 +121,17 @@ function renderSummary(counts){
   container.appendChild(summaryDiv);
 }
 
-// ---- Auto Save Handler ----
+// ---- Auto Save ----
 let saveTimeout = null;
 function handleCheckboxChange(el){
   const rowIdx = parseInt(el.dataset.row);
   const col = el.dataset.col;
-  window.data[rowIdx][col] = el.checked ? "true" : "false";
+  const row = window.data.find(r=>r.__row===rowIdx);
+  if(!row) return;
+  row[col] = el.checked?"true":"false";
   showSaveStatus("Saving...");
   clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(()=>{ saveToGitHub(); }, 800);
+  saveTimeout = setTimeout(saveToGitHub, 800);
 }
 
 function showSaveStatus(text){
@@ -130,9 +142,8 @@ function showSaveStatus(text){
 
 // ---- Save to GitHub ----
 async function saveToGitHub(){
-  const token = GITHUB_TOKEN;
   const updatedCSV = [
-    window.csvHeader1, // single header row
+    window.headers.join(","),
     ...window.data.map(r=>[
       r.Index,r.Date,r.Event,r.Class,r.Assignment,
       r["Andrew"],r["Canvas"],r.Verified
@@ -144,10 +155,10 @@ async function saveToGitHub(){
   const getRes = await fetch(url);
   const meta = await getRes.json();
 
-  await fetch(url, {
+  await fetch(url,{
     method:"PUT",
     headers:{
-      "Authorization":"token "+token,
+      "Authorization":"token "+GITHUB_TOKEN,
       "Content-Type":"application/json"
     },
     body: JSON.stringify({
@@ -177,19 +188,21 @@ function renderGroups(groups){
     headHTML+="</tr>";
     table.innerHTML=headHTML;
 
-    rows.forEach((row,idx)=>{
+    rows.forEach(row=>{
       let rowHTML="<tr>";
       headers.forEach(h=>{
-        if(h==="Andrew" || h==="Canvas" || h==="Verified"){
+        if(h==="Andrew"||h==="Canvas"||h==="Verified"){
           const checked=(row[h]||"").toLowerCase()==="true";
-          rowHTML+=`<td><input type="checkbox" data-row="${idx}" data-col="${h}" onchange="handleCheckboxChange(this)" ${checked?"checked":""}></td>`;
-        }else rowHTML+=`<td>${row[h]}</td>`;
+          rowHTML+=`<td><input type="checkbox" data-row="${row.__row}" data-col="${h}" onchange="handleCheckboxChange(this)" ${checked?"checked":""}></td>`;
+        } else {
+          rowHTML+=`<td>${row[h]}</td>`;
+        }
       });
-      rowHTML+="</tr>"; 
+      rowHTML+="</tr>";
       table.innerHTML+=rowHTML;
     });
     tableWrapper.appendChild(table);
-    desktopDiv.innerHTML=`<h2>${date}</h2>`; 
+    desktopDiv.innerHTML=`<h2>${date}</h2>`;
     desktopDiv.appendChild(tableWrapper);
 
     // Mobile cards
@@ -198,23 +211,27 @@ function renderGroups(groups){
     const cardContainer=document.createElement("div"); cardContainer.className="mobile-cards";
     dateHeader.onclick=()=>{ cardContainer.style.display=cardContainer.style.display==="block"?"none":"block"; };
 
-    rows.forEach((row,idx)=>{
+    rows.forEach(row=>{
       const card=document.createElement("div"); card.className="card";
       if(isRowPastDue(row)) card.classList.add("past-due");
       Object.keys(row).forEach(key=>{
-        if(["Index","Num","Event","Past Due"].includes(key)) return; 
+        if(["Index","Num","Event","Past Due"].includes(key)) return;
         const div=document.createElement("div"); div.className="card-row";
-        if(key==="Andrew" || key==="Canvas" || key==="Verified"){
+        if(key==="Andrew"||key==="Canvas"||key==="Verified"){
           const checked=(row[key]||"").toLowerCase()==="true";
-          div.innerHTML=`<label>${key}: <input type="checkbox" data-row="${idx}" data-col="${key}" onchange="handleCheckboxChange(this)" ${checked?"checked":""}></label>`;
-        }else div.innerHTML=`<strong>${key}:</strong> ${row[key]}`;
+          div.innerHTML=`<label>${key}: <input type="checkbox" data-row="${row.__row}" data-col="${key}" onchange="handleCheckboxChange(this)" ${checked?"checked":""}></label>`;
+        } else {
+          div.innerHTML=`<strong>${key}:</strong> ${row[key]}`;
+        }
         card.appendChild(div);
       });
       cardContainer.appendChild(card);
     });
-    mobileDiv.appendChild(dateHeader); mobileDiv.appendChild(cardContainer);
 
-    container.appendChild(desktopDiv); 
+    mobileDiv.appendChild(dateHeader);
+    mobileDiv.appendChild(cardContainer);
+
+    container.appendChild(desktopDiv);
     container.appendChild(mobileDiv);
   });
 }
@@ -222,8 +239,9 @@ function renderGroups(groups){
 // ---- Initialize ----
 (async function(){
   const csvText = await loadCSV();
-  window.csvHeader1 = csvText.split("\n")[0]; // only single header
-  window.data = parseCSV(csvText);
+  const parsed = parseCSV(csvText);
+  window.headers = parsed.headers;
+  window.data = parsed.data;
   renderSummary(aggregateStatusCounts(window.data));
   const groups = groupByDate(window.data);
   renderGroups(groups);
