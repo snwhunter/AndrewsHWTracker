@@ -47,7 +47,7 @@ async function loadCSV(){
 
 // ---- Parse CSV ----
 function parseCSV(text){
-  const lines = text.split("\n").slice(2); // skip 2 header rows
+  const lines = text.split("\n").slice(1); // skip 1 header row
   const headers = text.split("\n")[0].split(",").map(h=>h.trim());
   const data = lines.filter(l=>l.trim()!=="").map(line=>{
     const vals = line.split(",");
@@ -132,8 +132,7 @@ function showSaveStatus(text){
 async function saveToGitHub(){
   const token = GITHUB_TOKEN;
   const updatedCSV = [
-    window.csvHeader1,
-    window.csvHeader2,
+    window.csvHeader1, // single header row
     ...window.data.map(r=>[
       r.Index,r.Date,r.Event,r.Class,r.Assignment,
       r["Andrew"],r["Canvas"],r.Verified
@@ -201,6 +200,7 @@ function renderGroups(groups){
 
     rows.forEach((row,idx)=>{
       const card=document.createElement("div"); card.className="card";
+      if(isRowPastDue(row)) card.classList.add("past-due");
       Object.keys(row).forEach(key=>{
         if(["Index","Num","Event","Past Due"].includes(key)) return; 
         const div=document.createElement("div"); div.className="card-row";
@@ -222,8 +222,7 @@ function renderGroups(groups){
 // ---- Initialize ----
 (async function(){
   const csvText = await loadCSV();
-  window.csvHeader1 = csvText.split("\n")[0];
-  window.csvHeader2 = csvText.split("\n")[1];
+  window.csvHeader1 = csvText.split("\n")[0]; // only single header
   window.data = parseCSV(csvText);
   renderSummary(aggregateStatusCounts(window.data));
   const groups = groupByDate(window.data);
