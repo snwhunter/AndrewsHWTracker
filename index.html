@@ -153,4 +153,82 @@ async function saveToGitHub(){
     },
     body: JSON.stringify({
       message:"Auto-update HW status",
-      content:btoa(unes
+      content:btoa(unescape(encodeURIComponent(updatedCSV))),
+      sha:meta.sha
+    })
+  });
+  showSaveStatus("Saved ✓");
+}
+
+// ---- Render Groups ----
+function renderGroups(groups){
+  const container = document.getElementById("content");
+  Object.keys(groups).forEach(date=>{
+    const rows = groups[date];
+
+    // Desktop table
+    const desktopDiv=document.createElement("div"); desktopDiv.className="desktop-view";
+    const tableWrapper=document.createElement("div"); tableWrapper.className="table-wrapper";
+    const table=document.createElement("table");
+
+    const headers=Object.keys(rows[0]).filter(h=>!["Index","Num","Event","Past Due"].includes(h));
+
+    let headHTML="<tr>"; 
+    headers.forEach(h=>headHTML+=`<th>${h}</th>`); 
+    headHTML+="</tr>";
+    table.innerHTML=headHTML;
+
+    rows.forEach((row,idx)=>{
+      let rowHTML="<tr>";
+      headers.forEach(h=>{
+        if(h.includes("Status")||h==="Verified"){
+          const checked=(row[h]||"").toLowerCase()==="true";
+          rowHTML+=`<td><input type="checkbox" data-row="${idx}" data-col="${h}" onchange="handleCheckboxChange(this)" ${checked?"checked":""}></td>`;
+        }else rowHTML+=`<td>${row[h]}</td>`;
+      });
+      rowHTML+="</tr>"; 
+      table.innerHTML+=rowHTML;
+    });
+    tableWrapper.appendChild(table);
+    desktopDiv.innerHTML=`<h2>${date}</h2>`; 
+    desktopDiv.appendChild(tableWrapper);
+
+    // Mobile cards
+    const mobileDiv=document.createElement("div"); mobileDiv.className="mobile-view mobile-group";
+    const dateHeader=document.createElement("div"); dateHeader.className="mobile-date"; dateHeader.textContent=date;
+    const cardContainer=document.createElement("div"); cardContainer.className="mobile-cards";
+    dateHeader.onclick=()=>{ cardContainer.style.display=cardContainer.style.display==="block"?"none":"block"; };
+
+    rows.forEach((row,idx)=>{
+      const card=document.createElement("div"); card.className="card";
+      Object.keys(row).forEach(key=>{
+        if(["Index","Num","Event","Past Due"].includes(key)) return; 
+        const div=document.createElement("div"); div.className="card-row";
+        if(key.includes("Status")||key==="Verified"){
+          const checked=(row[key]||"").toLowerCase()==="true";
+          div.innerHTML=`<label>${key}: <input type="checkbox" data-row="${idx}" data-col="${key}" onchange="handleCheckboxChange(this)" ${checked?"checked":""}></label>`;
+        }else div.innerHTML=`<strong>${key}:</strong> ${row[key]}`;
+        card.appendChild(div);
+      });
+      cardContainer.appendChild(card);
+    });
+    mobileDiv.appendChild(dateHeader); mobileDiv.appendChild(cardContainer);
+
+    container.appendChild(desktopDiv); 
+    container.appendChild(mobileDiv);
+  });
+}
+
+// ---- Initialize ----
+(async function(){
+  const csvText = await loadCSV();
+  window.csvHeader1 = csvText.split("\n")[0];
+  window.csvHeader2 = csvText.split("\n")[1];
+  window.data = parseCSV(csvText);
+  renderSummary(aggregateStatusCounts(window.data));
+  const groups = groupByDate(window.data);
+  renderGroups(groups);
+})();
+</script>
+</body>
+</html>
