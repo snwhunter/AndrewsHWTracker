@@ -74,8 +74,8 @@ function isRowPastDue(row){
   const today = new Date(); today.setHours(0,0,0,0);
   const rowDate = new Date(row.Date);
   return rowDate < today && (
-    (row["Andrew Status"]||"").toLowerCase()!=="true" ||
-    (row["Canvas Status"]||"").toLowerCase()!=="true" ||
+    (row["Andrew"]||"").toLowerCase()!=="true" ||
+    (row["Canvas"]||"").toLowerCase()!=="true" ||
     (row["Verified"]||"").toLowerCase()!=="true"
   );
 }
@@ -87,8 +87,8 @@ function aggregateStatusCounts(data){
   data.forEach(row=>{
     const rowDate = new Date(row.Date);
     if(rowDate < today){
-      if((row["Andrew Status"]||"").toLowerCase()!=="true") counts.andrew++;
-      if((row["Canvas Status"]||"").toLowerCase()!=="true") counts.canvas++;
+      if((row["Andrew"]||"").toLowerCase()!=="true") counts.andrew++;
+      if((row["Canvas"]||"").toLowerCase()!=="true") counts.canvas++;
       if((row["Verified"]||"").toLowerCase()!=="true") counts.verified++;
     }
   });
@@ -136,7 +136,7 @@ async function saveToGitHub(){
     window.csvHeader2,
     ...window.data.map(r=>[
       r.Index,r.Date,r.Event,r.Class,r.Assignment,
-      r["Andrew Status"],r["Canvas Status"],r.Verified
+      r["Andrew"],r["Canvas"],r.Verified
     ].join(","))
   ].join("\n");
 
