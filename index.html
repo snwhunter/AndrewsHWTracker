@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Andrew HW Tracker</title>
+<style>
+body { font-family: Arial, sans-serif; margin:10px; }
+h1 { text-align: center; }
+#saveStatus { text-align:center; margin-bottom:10px; font-weight:bold; }
+
+.summary { background:#f4f6f8; padding:12px; border-radius:12px; margin-bottom:20px; }
+.summary li { font-weight:bold; padding:4px 0; }
+
+.table-wrapper { overflow-x:auto; }
+table { border-collapse: collapse; width:100%; }
+th, td { border:1px solid #ddd; padding:8px; }
+th { background:#f0f0f0; }
+
+.past-due { background-color:#ffe5e5; }
+
+.mobile-group { margin-bottom:20px; }
+.mobile-date { font-size:18px; font-weight:bold; padding:10px; background:#e9ecef; border-radius:10px; cursor:pointer; }
+.mobile-cards { margin-top:10px; display:none; }
+.card { border:1px solid #ddd; border-radius:12px; padding:12px; margin-bottom:10px; }
+.card.past-due { background-color:#ffe5e5; }
+.card-row { margin-bottom:6px; }
+input[type="checkbox"] { width:22px; height:22px; }
+button { width:100%; padding:12px; font-size:16px; border-radius:10px; border:none; background:#2d6cdf; color:white; }
+button:active { background:#1e4fb8; }
+
+@media (max-width:768px) { .desktop-view { display:none; } }
+@media (min-width:769px) { .mobile-view { display:none; } }
+</style>
+</head>
+<body>
+
+<h1>Andrew HW Tracker</h1>
+<div id="saveStatus"></div>
+<div id="content"></div>
+
+<script>
+// ---- CSV Data ----
+const csvData = `Index,Date,Event,Class,Assignment,Andrew Status,Canvas Status,Verified
+Num,DateTime,Str,Str,Str,Chk,Chk,Chk
+1,1/28/2026,4.0 Worksheets [P02-Pre-Calculus B-Mock-S2],P02-Pre-Calculus B-Mock-S2,4.0 Worksheets,,,
+2,1/28/2026,Forces Study Problem 2 [2526 Physics-Bregar-S2],2526 Physics-Bregar-S2,Forces Study Problem 2,,,
+3,1/28/2026,WWI Contraversial Decisions [25/26 US History OWEN S2],25/26 US History OWEN S2,WWI Contraversial Decisions,,,
+4,1/28/2026,WWI Propaganda Poster [25/26 US History OWEN S2],25/26 US History OWEN S2,WWI Propaganda Poster,,,
+5,1/30/2026,Enneagram Activity  [P02-Health 2-Stone-S2],P02-Health 2-Stone-S2,Enneagram Activity ,,,
+6,1/30/2026,Practice Test - Forces [2526 Physics-Bregar-S2],2526 Physics-Bregar-S2,Practice Test - Forces,,,
+7,1/30/2026,Reading Log #3 [2526-Spanish 4 A-Dickerson-S2],2526-Spanish 4 A-Dickerson-S2,Reading Log #3,,,
+8,2/2/2026,4.1 HW [P02-Pre-Calculus B-Mock-S2],P02-Pre-Calculus B-Mock-S2,4.1 HW,,,
+9,2/2/2026,Mini-Exam - Forces [2526 Physics-Bregar-S2],2526 Physics-Bregar-S2,Mini-Exam - Forces,,,
+10,2/2/2026,Todo lo Que Brilla Documental [2526-Spanish 4 A-Dickerson-S2],2526-Spanish 4 A-Dickerson-S2,Todo lo Que Brilla Documental,,,
+11,2/4/2026,Estimating and FInding Momentum [2526 Physics-Bregar-S2],2526 Physics-Bregar-S2,Estimating and FInding Momentum,,,
+12,2/4/2026,Reference Triangles Day 1 HW [P02-Pre-Calculus B-Mock-S2],P02-Pre-Calculus B-Mock-S2,Reference Triangles Day 1 HW,,,
+13,2/4/2026,Self Care Packet  [P02-Health 2-Stone-S2],P02-Health 2-Stone-S2,Self Care Packet ,,,
+14,2/5/2026,1920s Speed Dating (P07-US History B-Owen-S2) [25/26 US History OWEN S2],25/26 US History OWEN S2,1920s Speed Dating (P07-US History B-Owen-S2),,,
+15,2/5/2026,Unit 4 Final Exam Part 1 [25/26 US History OWEN S2],25/26 US History OWEN S2,Unit 4 Final Exam Part 1,,,
+16,2/5/2026,Unit 4 Final Exam Part 2 [25/26 US History OWEN S2],25/26 US History OWEN S2,Unit 4 Final Exam Part 2,,,
+17,2/6/2026,Reference Triangles Day 2 HW [P02-Pre-Calculus B-Mock-S2],P02-Pre-Calculus B-Mock-S2,Reference Triangles Day 2 HW,,,
+18,2/9/2026,Cap tulo 4 Cuento [2526-Spanish 4 A-Dickerson-S2],2526-Spanish 4 A-Dickerson-S2,Cap tulo 4 Cuento,,,
+19,2/9/2026,Chapter 4 Part 1 Quiz [P02-Pre-Calculus B-Mock-S2],P02-Pre-Calculus B-Mock-S2,Chapter 4 Part 1 Quiz,,,
+20,2/9/2026,Epals Carta #4 [2526-Spanish 4 A-Dickerson-S2],2526-Spanish 4 A-Dickerson-S2,Epals Carta #4,,,
+21,2/9/2026,Epals Video #4 [2526-Spanish 4 A-Dickerson-S2],2526-Spanish 4 A-Dickerson-S2,Epals Video #4,,,
+22,2/9/2026,Reference Triangles Day 3 HW [P02-Pre-Calculus B-Mock-S2],P02-Pre-Calculus B-Mock-S2,Reference Triangles Day 3 HW,,,
+23,2/11/2026,Exact Values Quiz #1 [P02-Pre-Calculus B-Mock-S2],P02-Pre-Calculus B-Mock-S2,Exact Values Quiz #1,,,
+24,2/11/2026,Conservation of Momentum Activity [2526 Physics-Bregar-S2],2526 Physics-Bregar-S2,Conservation of Momentum Activity,,,
+25,2/11/2026,Conservation of Momentum Problems [2526 Physics-Bregar-S2],2526 Physics-Bregar-S2,Conservation of Momentum Problems,,,
+26,2/13/2026,6.1 HW [P02-Pre-Calculus B-Mock-S2],P02-Pre-Calculus B-Mock-S2,6.1 HW,,,
+27,2/13/2026,Behavior Change Worksheet  [P02-Health 2-Stone-S2],P02-Health 2-Stone-S2,Behavior Change Worksheet ,,,
+28,2/13/2026,Conservation of Momentum Video Analysis [2526 Physics-Bregar-S2],2526 Physics-Bregar-S2,Conservation of Momentum Video Analysis,,,
+29,3/20/2026,Cap tulo 4 Choice Board [2526-Spanish 4 A-Dickerson-S2],2526-Spanish 4 A-Dickerson-S2,Cap tulo 4 Choice Board,,,
+`;
+
+// ---- CSV Parsing ----
+function parseCSV(text) {
+  const lines = text.split("\n").slice(2); // skip 2 header rows
+  const headers = csvData.split("\n")[0].split(",");
+  const data = lines.filter(l=>l.trim()!=="").map(line=>{
+    const vals = line.split(",");
+    const obj = {};
+    headers.forEach((h,i)=>obj[h.trim()]=vals[i] ? vals[i].trim() : "");
+    return obj;
+  });
+  return data;
+}
+
+// ---- Group By Date ----
+function groupByDate(data){
+  const groups = {};
+  data.forEach(row=>{
+    const date = row.Date;
+    if(!groups[date]) groups[date]=[];
+    groups[date].push(row);
+  });
+  return groups;
+}
+
+// ---- Past Due ----
+function isRowPastDue(row){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const rowDate = new Date(row.Date);
+  return rowDate < today && (
+    (row["Andrew Status"]||"").toLowerCase()!=="true" ||
+    (row["Canvas Status"]||"").toLowerCase()!=="true" ||
+    (row["Verified"]||"").toLowerCase()!=="true"
+  );
+}
+
+// ---- Aggregate Summary ----
+function aggregateStatusCounts(data){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const counts = { andrew:0, canvas:0, verified:0 };
+  data.forEach(row=>{
+    const rowDate = new Date(row.Date);
+    if(rowDate < today){
+      if((row["Andrew Status"]||"").toLowerCase()!=="true") counts.andrew++;
+      if((row["Canvas Status"]||"").toLowerCase()!=="true") counts.canvas++;
+      if((row["Verified"]||"").toLowerCase()!=="true") counts.verified++;
+    }
+  });
+  return counts;
+}
+
+// ---- Render Summary ----
+function renderSummary(counts){
+  const container = document.getElementById("content");
+  const summaryDiv = document.createElement("div");
+  summaryDiv.className = "summary";
+  summaryDiv.innerHTML = `
+    <h2>Past Due Status</h2>
+    <ul>
+      <li>Andrew Missing: ${counts.andrew}</li>
+      <li>Canvas Missing: ${counts.canvas}</li>
+      <li>Verified Missing: ${counts.verified}</li>
+    </ul>
+  `;
+  container.appendChild(summaryDiv);
+}
+
+// ---- Auto Save Handler ----
+let saveTimeout = null;
+function handleCheckboxChange(el){
+  const rowIdx = parseInt(el.dataset.row);
+  const col = el.dataset.col;
+  window.data[rowIdx][col] = el.checked ? "true" : "false";
+  showSaveStatus("Saving...");
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(()=>{ saveToGitHub(); }, 800);
+}
+
+function showSaveStatus(text){
+  const el = document.getElementById("saveStatus");
+  el.textContent = text;
+  if(text.includes("Saved")) setTimeout(()=>{ el.textContent=""; },2000);
+}
+
+// ---- Save to GitHub ----
+async function saveToGitHub(){
+  const token = localStorage.getItem("github_token") || prompt("Enter GitHub Token:");
+  if(!localStorage.getItem("github_token")) localStorage.setItem("github_token", token);
+
+  const updatedCSV = [
+    csvData.split("\n")[0],
+    csvData.split("\n")[1],
+    ...window.data.map(r=>[
+      r.Index,r.Date,r.Event,r.Class,r.Assignment,
+      r["Andrew Status"],r["Canvas Status"],r.Verified
+    ].join(","))
+  ].join("\n");
+
+  const owner="snwhunter", repo="AndrewsHWTracker", path="Andrew_HW_S2-Y2526.csv";
+  const url=`https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`;
+  const getRes = await fetch(url);
+  const meta = await getRes.json();
+
+  await fetch(url, {
+    method:"PUT",
+    headers:{
+      "Authorization":"token "+token,
+      "Content-Type":"application/json"
+    },
+    body: JSON.stringify({
+      message:"Auto-update HW status",
+      content:btoa(unescape(encodeURIComponent(updatedCSV))),
+      sha:meta.sha
+    })
+  });
+  showSaveStatus("Saved ✓");
+}
+
+// ---- Render Groups ----
+function renderGroups(groups){
+  const container = document.getElementById("content");
+
+  Object.keys(groups).forEach(date=>{
+    const rows = groups[date];
+
+    // Desktop table
+    const desktopDiv=document.createElement("div"); desktopDiv.className="desktop-view";
+    const tableWrapper=document.createElement("div"); tableWrapper.className="table-wrapper";
+    const table=document.createElement("table");
+    const headers=Object.keys(rows[0]);
+    let headHTML="<tr><th>Past Due</th>"; headers.forEach(h=>headHTML+=`<th>${h}</th>`); headHTML+="</tr>";
+    table.innerHTML=headHTML;
+    rows.forEach((row,idx)=>{
+      const isPast=isRowPastDue(row);
+      let rowHTML=`<tr class="${isPast?"past-due":""}"><td>${isPast?"YES":""}</td>`;
+      headers.forEach(h=>{
+        if(h.includes("Status")||h==="Verified"){
+          const checked=(row[h]||"").toLowerCase()==="true";
+          rowHTML+=`<td><input type="checkbox" data-row="${idx}" data-col="${h}" onchange="handleCheckboxChange(this)" ${checked?"checked":""}></td>`;
+        }else rowHTML+=`<td>${row[h]}</td>`;
+      });
+      rowHTML+="</tr>"; table.innerHTML+=rowHTML;
+    });
+    tableWrapper.appendChild(table);
+    desktopDiv.innerHTML=`<h2>${date}</h2>`; desktopDiv.appendChild(tableWrapper);
+
+    // Mobile cards
+    const mobileDiv=document.createElement("div"); mobileDiv.className="mobile-view mobile-group";
+    const dateHeader=document.createElement("div"); dateHeader.className="mobile-date"; dateHeader.textContent=date;
+    const cardContainer=document.createElement("div"); cardContainer.className="mobile-cards";
+    dateHeader.onclick=()=>{ cardContainer.style.display=cardContainer.style.display==="block"?"none":"block"; };
+    rows.forEach((row,idx)=>{
+      const isPast=isRowPastDue(row);
+      const card=document.createElement("div"); card.className="card"+(isPast?" past-due":"");
+      Object.keys(row).forEach(key=>{
+        const div=document.createElement("div"); div.className="card-row";
+        if(key.includes("Status")||key==="Verified"){
+          const checked=(row[key]||"").toLowerCase()==="true";
+          div.innerHTML=`<label>${key}: <input type="checkbox" data-row="${idx}" data-col="${key}" onchange="handleCheckboxChange(this)" ${checked?"checked":""}></label>`;
+        }else div.innerHTML=`<strong>${key}:</strong> ${row[key]}`;
+        card.appendChild(div);
+      });
+      cardContainer.appendChild(card);
+    });
+    mobileDiv.appendChild(dateHeader); mobileDiv.appendChild(cardContainer);
+
+    container.appendChild(desktopDiv); container.appendChild(mobileDiv);
+  });
+}
+
+// ---- Load CSV & Initialize ----
+window.data=parseCSV(csvData);
+renderSummary(aggregateStatusCounts(window.data));
+window.groups=groupByDate(window.data);
+renderGroups(window.groups);
+</script>
+</body>
+</html>
