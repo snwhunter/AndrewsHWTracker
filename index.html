@@ -191,7 +191,6 @@ async function saveToGitHub(){
   showSaveStatus("Saved ✓");
 }
 
-// ---- Render Groups ----
 function renderGroups(groups){
   const container = document.getElementById("content");
 
@@ -202,12 +201,11 @@ function renderGroups(groups){
     const desktopDiv=document.createElement("div"); desktopDiv.className="desktop-view";
     const tableWrapper=document.createElement("div"); tableWrapper.className="table-wrapper";
     const table=document.createElement("table");
-    const headers=Object.keys(rows[0]);
-    let headHTML="<tr><th>Past Due</th>"; headers.forEach(h=>headHTML+=`<th>${h}</th>`); headHTML+="</tr>";
+    const headers=Object.keys(rows[0]).filter(h=>h!=="Event"&&h!=="Past Due"); // hide Event and Past Due
+    let headHTML="<tr>"; headers.forEach(h=>headHTML+=`<th>${h}</th>`); headHTML+="</tr>";
     table.innerHTML=headHTML;
     rows.forEach((row,idx)=>{
-      const isPast=isRowPastDue(row);
-      let rowHTML=`<tr class="${isPast?"past-due":""}"><td>${isPast?"YES":""}</td>`;
+      let rowHTML="<tr>";
       headers.forEach(h=>{
         if(h.includes("Status")||h==="Verified"){
           const checked=(row[h]||"").toLowerCase()==="true";
@@ -225,9 +223,9 @@ function renderGroups(groups){
     const cardContainer=document.createElement("div"); cardContainer.className="mobile-cards";
     dateHeader.onclick=()=>{ cardContainer.style.display=cardContainer.style.display==="block"?"none":"block"; };
     rows.forEach((row,idx)=>{
-      const isPast=isRowPastDue(row);
-      const card=document.createElement("div"); card.className="card"+(isPast?" past-due":"");
+      const card=document.createElement("div"); card.className="card";
       Object.keys(row).forEach(key=>{
+        if(key==="Event") return; // hide Event
         const div=document.createElement("div"); div.className="card-row";
         if(key.includes("Status")||key==="Verified"){
           const checked=(row[key]||"").toLowerCase()==="true";
