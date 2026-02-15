@@ -25,38 +25,21 @@ h1 { text-align: center; margin-bottom: 5px; }
 .summary { background:#f4f6f8; padding:12px; border-radius:12px; margin-bottom:20px; }
 .summary li { font-weight:bold; padding:4px 0; }
 
-.table-wrapper { overflow-x:auto; }
 table { border-collapse: collapse; width:100%; }
 th, td { border:1px solid #ddd; padding:8px; }
 th { background:#f0f0f0; }
 
 .past-due { background-color:#ffe5e5; }
 
-.mobile-group { margin-bottom:20px; }
-.mobile-date {
-  font-size:18px;
-  font-weight:bold;
-  padding:10px;
-  background:#e9ecef;
-  border-radius:10px;
-  cursor:pointer;
+select {
+  padding:4px;
+  border-radius:6px;
 }
-.mobile-cards { margin-top:10px; display:none; }
 
-.card {
-  border:1px solid #ddd;
-  border-radius:12px;
-  padding:12px;
-  margin-bottom:10px;
+input[type="checkbox"] {
+  width:20px;
+  height:20px;
 }
-.card.past-due { background-color:#ffe5e5; }
-
-.card-row { margin-bottom:6px; }
-
-input[type="checkbox"] { width:22px; height:22px; }
-
-@media (max-width:768px) { .desktop-view { display:none; } }
-@media (min-width:769px) { .mobile-view { display:none; } }
 </style>
 </head>
 
@@ -75,20 +58,21 @@ input[type="checkbox"] { width:22px; height:22px; }
 <script>
 
 // ==========================
-// VERSION
+// CONFIG
 // ==========================
-const VERSION = "v1.2.0";
-document.getElementById("indexVersion").textContent = "Index: " + VERSION;
-
+const VERSION = "v2.0.0";
 const owner = "snwhunter";
 const repo = "AndrewsHWTracker";
 const dataPath = "data.csv";
+const GITHUB_TOKEN = "REPLACE_WITH_TOKEN";
+
+// ==========================
+// VERSION DISPLAY
+// ==========================
+document.getElementById("indexVersion").textContent = "Index: " + VERSION;
 
 let lastCommitDate = null;
 
-// ==========================
-// FETCH LAST COMMIT DATE
-// ==========================
 async function fetchDataLastCommit() {
   try {
     const response = await fetch(
@@ -100,14 +84,11 @@ async function fetchDataLastCommit() {
       lastCommitDate = new Date(commits[0].commit.committer.date);
       updateRelativeTime();
     }
-  } catch (err) {
+  } catch {
     document.getElementById("dataVersion").textContent = "Data: Error";
   }
 }
 
-// ==========================
-// RELATIVE TIME DISPLAY
-// ==========================
 function updateRelativeTime() {
   if (!lastCommitDate) return;
 
@@ -130,206 +111,12 @@ function updateRelativeTime() {
   document.getElementById("dataVersion").textContent = text;
 }
 
-// Update relative time every 60 seconds
 setInterval(updateRelativeTime, 60000);
 
 // ==========================
 // LOAD CSV
 // ==========================
 async function loadCSV() {
-  const res = await fetch(`https://snwhunter.github.io/AndrewsHWTracker/data.csv?cacheBust=${Date.now()}`);
-  return await res.text();
-}
-
-// ==========================
-// PARSE CSV
-// ==========================
-function parseCSV(text){
-  const lines = text.split("\n").filter(l => l.trim()!=="");
-  const headers = lines[0].split(",").map(h=>h.trim());
-  const data = lines.slice(1).map((line, idx)=>{
-    const vals = line.split(",");
-    const obj = { __row: idx };
-    headers.forEach((h,i)=>obj[h]=vals[i]?vals[i].trim():"");
-    return obj;
-  });
-  return { headers, data };
-}
-
-// ==========================
-// GROUP BY DATE
-// ==========================
-function groupByDate(data){
-  const groups = {};
-  data.forEach(row=>{
-    if(!groups[row.Date]) groups[row.Date]=[];
-    groups[row.Date].push(row);
-  });
-  return groups;
-}
-
-// ==========================
-// PAST DUE CHECK
-// ==========================
-function isRowPastDue(row){
-  const today = new Date(); today.setHours(0,0,0,0);
-  const rowDate = new Date(row.Date);
-  return rowDate < today &&
-    ((row["Andrew"]||"").toLowerCase()!=="true" ||
-     (row["Canvas"]||"").toLowerCase()!=="true" ||
-     (row["Verified"]||"").toLowerCase()!=="true");
-}
-
-// ==========================
-// SUMMARY
-// ==========================
-function aggregateStatusCounts(data){
-  const today = new Date(); today.setHours(0,0,0,0);
-  const counts = { andrew:0, canvas:0, verified:0 };
-
-  data.forEach(row=>{
-    const rowDate = new Date(row.Date);
-    if(rowDate < today){
-      if((row["Andrew"]||"").toLowerCase()!=="true") counts.andrew++;
-      if((row["Canvas"]||"").toLowerCase()!=="true") counts.canvas++;
-      if((row["Verified"]||"").toLowerCase()!=="true") counts.verified++;
-    }
-  });
-
-  return counts;
-}
-
-function renderSummary(counts){
-  const container = document.getElementById("content");
-  const summaryDiv = document.createElement("div");
-  summaryDiv.className = "summary";
-  summaryDiv.innerHTML = `
-    <h2>Past Due Status</h2>
-    <ul>
-      <li>Andrew Missing: ${counts.andrew}</li>
-      <li>Canvas Missing: ${counts.canvas}</li>
-      <li>Verified Missing: ${counts.verified}</li>
-    </ul>
-  `;
-  container.appendChild(summaryDiv);
-}
-
-// ==========================
-// AUTO SAVE
-// ==========================
-const GITHUB_TOKEN = "REPLACE_WITH_TOKEN";
-let saveTimeout = null;
-
-function handleCheckboxChange(el){
-  const rowIdx = parseInt(el.dataset.row);
-  const col = el.dataset.col;
-  const row = window.data.find(r=>r.__row===rowIdx);
-  if(!row) return;
-
-  row[col] = el.checked ? "true" : "false";
-  showSaveStatus("Saving...");
-  clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(saveToGitHub, 800);
-}
-
-function showSaveStatus(text){
-  const el = document.getElementById("saveStatus");
-  el.textContent = text;
-  if(text.includes("Saved")) setTimeout(()=>{ el.textContent=""; },2000);
-}
-
-// ==========================
-// SAVE TO GITHUB
-// ==========================
-async function saveToGitHub(){
-  const updatedCSV = [
-    window.headers.join(","),
-    ...window.data.map(r=>[
-      r.Index,r.Date,r.Event,r.Class,r.Assignment,
-      r["Andrew"],r["Canvas"],r.Verified
-    ].join(","))
-  ].join("\n");
-
-  const url=`https://api.github.com/repos/${owner}/${repo}/contents/${dataPath}`;
-  const getRes = await fetch(url);
-  const meta = await getRes.json();
-
-  await fetch(url,{
-    method:"PUT",
-    headers:{
-      "Authorization":"token "+GITHUB_TOKEN,
-      "Content-Type":"application/json"
-    },
-    body: JSON.stringify({
-      message:"Auto-update HW status",
-      content:btoa(unescape(encodeURIComponent(updatedCSV))),
-      sha:meta.sha
-    })
-  });
-
-  showSaveStatus("Saved ✓");
-
-  // Refresh commit time after save
-  setTimeout(fetchDataLastCommit, 2000);
-}
-
-// ==========================
-// RENDER TABLES
-// ==========================
-function renderGroups(groups){
-  const container = document.getElementById("content");
-
-  Object.keys(groups).forEach(date=>{
-    const rows = groups[date];
-
-    const desktopDiv=document.createElement("div");
-    desktopDiv.className="desktop-view";
-
-    const table=document.createElement("table");
-
-    const headers=Object.keys(rows[0]).filter(h=>!["Index","Num","Event","Past Due"].includes(h));
-
-    let headHTML="<tr>";
-    headers.forEach(h=>headHTML+=`<th>${h}</th>`);
-    headHTML+="</tr>";
-    table.innerHTML=headHTML;
-
-    rows.forEach(row=>{
-      let rowHTML="<tr>";
-      headers.forEach(h=>{
-        if(h==="Andrew"||h==="Canvas"||h==="Verified"){
-          const checked=(row[h]||"").toLowerCase()==="true";
-          rowHTML+=`<td><input type="checkbox" data-row="${row.__row}" data-col="${h}" onchange="handleCheckboxChange(this)" ${checked?"checked":""}></td>`;
-        } else {
-          rowHTML+=`<td>${row[h]}</td>`;
-        }
-      });
-      rowHTML+="</tr>";
-      table.innerHTML+=rowHTML;
-    });
-
-    desktopDiv.innerHTML=`<h2>${date}</h2>`;
-    desktopDiv.appendChild(table);
-
-    container.appendChild(desktopDiv);
-  });
-}
-
-// ==========================
-// INIT
-// ==========================
-(async function(){
-  await fetchDataLastCommit();
-  const csvText = await loadCSV();
-  const parsed = parseCSV(csvText);
-  window.headers = parsed.headers;
-  window.data = parsed.data;
-
-  renderSummary(aggregateStatusCounts(window.data));
-  const groups = groupByDate(window.data);
-  renderGroups(groups);
-})();
-
-</script>
-</body>
-</html>
+  const res = await fetch(
+    `https://snwhunter.github.io/AndrewsHWTracker/data.csv?cacheBust=${Date.now()}`
+  );
