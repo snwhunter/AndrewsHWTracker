@@ -9,18 +9,30 @@ body { font-family: Arial, sans-serif; margin:10px; position: relative; }
 h1 { text-align: center; margin-bottom: 5px; }
 #versionLabel { position: absolute; top:10px; right:10px; font-size:12px; font-weight:bold; color:#555; text-align:right; line-height:1.4; }
 #saveStatus { text-align:center; margin-bottom:10px; font-weight:bold; }
-.past-due { background-color:#ffe5e5; }
-select { padding:4px; border-radius:6px; }
-input[type="checkbox"] { width:20px; height:20px; }
+.summary { background:#f4f6f8; padding:12px; border-radius:12px; margin-bottom:20px; }
+.summary li { font-weight:bold; padding:4px 0; }
+.table-wrapper { overflow-x:auto; }
 table { border-collapse:collapse; width:100%; }
 th, td { border:1px solid #ddd; padding:8px; }
 th { background:#f0f0f0; }
+.past-due { background-color:#ffe5e5; }
+select { padding:4px; border-radius:6px; }
+input[type="checkbox"] { width:20px; height:20px; }
+.mobile-group { margin-bottom:20px; }
+.mobile-date { font-size:18px; font-weight:bold; padding:10px; background:#e9ecef; border-radius:10px; cursor:pointer; }
+.mobile-cards { margin-top:10px; display:none; }
+.card { border:1px solid #ddd; border-radius:12px; padding:12px; margin-bottom:10px; }
+.card.past-due { background-color:#ffe5e5; }
+.card-row { margin-bottom:6px; }
+@media (max-width:768px){ .desktop-view { display:none; } }
+@media (min-width:769px){ .mobile-view { display:none; } }
 </style>
 </head>
 <body>
+
 <h1>Andrew HW Tracker</h1>
 <div id="versionLabel">
-  <div id="indexVersion">Index: v3.0.1</div>
+  <div id="indexVersion">Index: v3.2.0</div>
   <div id="dataVersion">Loading...</div>
 </div>
 <div id="saveStatus"></div>
@@ -87,69 +99,38 @@ function isRowPastDue(row){
   const rowDate=new Date(row.Date);
   return rowDate<today && (!isAndrewDone(row["Andrew"]) || (row["Canvas"]||"").toLowerCase()!=="true" || (row["Verified"]||"").toLowerCase()!=="true");
 }
-
-// ================= RENDER =================
-function renderTable(){
-  const container = document.getElementById("content");
-  container.innerHTML = "";
-  const table = document.createElement("table");
-  table.innerHTML = "<tr>"+headers.map(h=>`<th>${h}</th>`).join("")+"</tr>";
-
-  windowData.forEach(row=>{
-    let rowHTML = "<tr"+(isRowPastDue(row)?" class='past-due'":"")+">";
-    headers.forEach(h=>{
-      if(h==="Andrew"){
-        let current = row[h] || "Not Started";
-        rowHTML += `<td><select onchange="updateAndrew(${row.__row},this.value)">
-          <option ${current==="Not Started"?"selected":""}>Not Started</option>
-          <option ${current==="In Progress"?"selected":""}>In Progress</option>
-          <option ${current==="Completed"?"selected":""}>Completed</option>
-          <option ${current==="Turned In"?"selected":""}>Turned In</option>
-        </select></td>`;
-      }
-      else if(h==="Canvas"||h==="Verified"){
-        const checked = (row[h]||"").toLowerCase()==="true";
-        rowHTML += `<td><input type="checkbox" ${checked?"checked":""} onchange="updateCheckbox(${row.__row},'${h}',this.checked)"></td>`;
-      }else{
-        rowHTML += `<td>${row[h]}</td>`;
-      }
-    });
-    rowHTML += "</tr>";
-    table.innerHTML += rowHTML;
+function aggregateCounts(data){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const counts={andrew:0,canvas:0,verified:0};
+  data.forEach(r=>{
+    const rowDate=new Date(r.Date);
+    if(rowDate<today){
+      if(!isAndrewDone(r["Andrew"])) counts.andrew++;
+      if((r["Canvas"]||"").toLowerCase()!=="true") counts.canvas++;
+      if((r["Verified"]||"").toLowerCase()!=="true") counts.verified++;
+    }
   });
-  container.appendChild(table);
+  return counts;
 }
 
-// ================= UPDATE =================
+// ================= SAVE =================
 function triggerSave(){
   document.getElementById("saveStatus").textContent="Saving...";
   clearTimeout(saveTimeout);
   saveTimeout = setTimeout(saveToGitHub,800);
-}
-function updateAndrew(rowIndex,value){
-  windowData[rowIndex]["Andrew"]=value;
-  triggerSave();
-}
-function updateCheckbox(rowIndex,col,value){
-  windowData[rowIndex][col]=value?"true":"false";
-  triggerSave();
 }
 function buildCSV(){
   const rows = [headers.join(",")];
   windowData.forEach(r=>rows.push(headers.map(h=>r[h]||"").join(",")));
   return rows.join("\n");
 }
-
-// ================= SAVE =================
 async function saveToGitHub(){
   const content = buildCSV();
   const url = `https://api.github.com/repos/${owner}/${repo}/contents/${dataPath}?ref=${branch}`;
-
   try{
-    const getRes = await fetch(url, {headers:{Authorization:`Bearer ${GITHUB_TOKEN}`}});
+    const getRes = await fetch(url,{headers:{Authorization:`Bearer ${GITHUB_TOKEN}`}});
     const fileData = await getRes.json();
     const sha = fileData.sha;
-
     const updateRes = await fetch(url,{
       method:"PUT",
       headers:{
@@ -163,26 +144,125 @@ async function saveToGitHub(){
         branch:branch
       })
     });
-
     if(updateRes.ok){
       document.getElementById("saveStatus").textContent="Saved ✓";
       setTimeout(()=>document.getElementById("saveStatus").textContent="",2000);
       setTimeout(fetchLastCommit,2000);
+      renderTable();
     }else{
       document.getElementById("saveStatus").textContent="Save Failed ❌";
       console.error(await updateRes.json());
     }
-
   }catch(err){
     document.getElementById("saveStatus").textContent="Network Error ❌";
     console.error(err);
   }
 }
 
+// ================= RENDER =================
+function groupByDate(data){
+  const groups={};
+  data.forEach(r=>{
+    if(!groups[r.Date]) groups[r.Date]=[];
+    groups[r.Date].push(r);
+  });
+  return groups;
+}
+function renderSummary(){
+  const container=document.getElementById("content");
+  const counts = aggregateCounts(windowData);
+  const div=document.createElement("div");
+  div.className="summary";
+  div.innerHTML=`<h2>Past Due Status</h2>
+    <ul>
+      <li>Andrew Missing: ${counts.andrew}</li>
+      <li>Canvas Missing: ${counts.canvas}</li>
+      <li>Verified Missing: ${counts.verified}</li>
+    </ul>`;
+  container.appendChild(div);
+}
+function renderTable(){
+  const container=document.getElementById("content");
+  container.innerHTML="";
+  renderSummary();
+  const groups = groupByDate(windowData);
+  Object.keys(groups).sort().forEach(date=>{
+    const rows = groups[date];
+
+    // Desktop Table
+    const desktopDiv = document.createElement("div");
+    desktopDiv.className="desktop-view";
+    const tableWrapper = document.createElement("div");
+    tableWrapper.className="table-wrapper";
+    const table = document.createElement("table");
+    table.innerHTML="<tr>"+headers.filter(h=>h!=="Event").map(h=>`<th>${h}</th>`).join("")+"</tr>";
+    rows.forEach(row=>{
+      let rowHTML="<tr"+(isRowPastDue(row)?" class='past-due'":"")+">";
+      headers.forEach(h=>{
+        if(h==="Event") return; // hide Event
+        if(h==="Andrew"){
+          let current=row[h]||"Not Started";
+          rowHTML+=`<td><select onchange="updateAndrew(${row.__row},this.value)">
+            <option ${current==="Not Started"?"selected":""}>Not Started</option>
+            <option ${current==="In Progress"?"selected":""}>In Progress</option>
+            <option ${current==="Completed"?"selected":""}>Completed</option>
+            <option ${current==="Turned In"?"selected":""}>Turned In</option>
+          </select></td>`;
+        }else if(h==="Canvas"||h==="Verified"){
+          const checked=(row[h]||"").toLowerCase()==="true";
+          rowHTML+=`<td><input type="checkbox" ${checked?"checked":""} onchange="updateCheckbox(${row.__row},'${h}',this.checked)"></td>`;
+        }else rowHTML+=`<td>${row[h]}</td>`;
+      });
+      rowHTML+="</tr>";
+      table.innerHTML+=rowHTML;
+    });
+    desktopDiv.innerHTML=`<h2>${date}</h2>`;
+    tableWrapper.appendChild(table);
+    desktopDiv.appendChild(tableWrapper);
+    container.appendChild(desktopDiv);
+
+    // Mobile Cards
+    const mobileDiv=document.createElement("div");
+    mobileDiv.className="mobile-view mobile-group";
+    const dateHeader=document.createElement("div");
+    dateHeader.className="mobile-date"; dateHeader.textContent=date;
+    const cardContainer=document.createElement("div"); cardContainer.className="mobile-cards";
+    dateHeader.onclick=()=>{ cardContainer.style.display=cardContainer.style.display==="block"?"none":"block"; };
+    rows.forEach(row=>{
+      const card=document.createElement("div"); card.className="card"; if(isRowPastDue(row)) card.classList.add("past-due");
+      headers.forEach(h=>{
+        if(["Index","Num","Event"].includes(h)) return;
+        const div=document.createElement("div"); div.className="card-row";
+        if(h==="Andrew"){
+          let current=row[h]||"Not Started";
+          div.innerHTML=`${h}: <select onchange="updateAndrew(${row.__row},this.value)">
+            <option ${current==="Not Started"?"selected":""}>Not Started</option>
+            <option ${current==="In Progress"?"selected":""}>In Progress</option>
+            <option ${current==="Completed"?"selected":""}>Completed</option>
+            <option ${current==="Turned In"?"selected":""}>Turned In</option>
+          </select>`;
+        }else if(h==="Canvas"||h==="Verified"){
+          const checked=(row[h]||"").toLowerCase()==="true";
+          div.innerHTML=`${h}: <input type="checkbox" ${checked?"checked":""} onchange="updateCheckbox(${row.__row},'${h}',this.checked)">`;
+        }else div.innerHTML=`<strong>${h}:</strong> ${row[h]}`;
+        card.appendChild(div);
+      });
+      cardContainer.appendChild(card);
+    });
+    mobileDiv.appendChild(dateHeader);
+    mobileDiv.appendChild(cardContainer);
+    container.appendChild(mobileDiv);
+  });
+}
+
+// ================= UPDATE FUNCTIONS =================
+function updateAndrew(rowIndex,value){ windowData[rowIndex]["Andrew"]=value; triggerSave(); }
+function updateCheckbox(rowIndex,col,value){ windowData[rowIndex][col]=value?"true":"false"; triggerSave(); }
+
 // ================= INIT =================
 (async function(){
   await fetchLastCommit();
-  const csvText = await loadCSV();
+  const csvText=await loadCSV();
   parseCSV(csvText);
   renderTable();
 })();
