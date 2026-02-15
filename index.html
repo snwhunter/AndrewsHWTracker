@@ -76,7 +76,7 @@ input[type="checkbox"] { width:20px; height:20px; }
 <script>
 
 // ================= VERSION =================
-const VERSION = "v2.1.1";
+const VERSION = "v2.1.2";
 document.getElementById("indexVersion").textContent = "Index: " + VERSION;
 
 const owner="snwhunter";
@@ -196,27 +196,55 @@ function showSaveStatus(text){
   if(text.includes("Saved")) setTimeout(()=>el.textContent="",2000);
 }
 
-async function saveToGitHub(){
-  const updatedCSV=[
-    window.headers.join(","),
-    ...window.data.map(r=>window.headers.map(h=>r[h]||"").join(","))
-  ].join("\n");
+async function saveToGitHub(content) {
+  const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`;
 
-  const url=`https://api.github.com/repos/${owner}/${repo}/contents/${dataPath}`;
-  const meta=await (await fetch(url)).json();
+  try {
+    // Get current file SHA
+    const getResponse = await fetch(url + `?ref=${BRANCH}`, {
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Accept: "application/vnd.github+json"
+      }
+    });
 
-  await fetch(url,{
-    method:"PUT",
-    headers:{
-      "Authorization":"token "+GITHUB_TOKEN,
-      "Content-Type":"application/json"
-    },
-    body:JSON.stringify({
-      message:"Auto-update HW status",
-      content:btoa(unescape(encodeURIComponent(updatedCSV))),
-      sha:meta.sha
-    })
-  });
+    let sha = null;
+
+    if (getResponse.ok) {
+      const data = await getResponse.json();
+      sha = data.sha;
+    }
+
+    const updateResponse = await fetch(url, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: "Update data.csv",
+        content: btoa(content),
+        sha: sha,
+        branch: BRANCH
+      })
+    });
+
+    const result = await updateResponse.json();
+
+    if (!updateResponse.ok) {
+      console.error("GitHub Save Error:", result);
+      alert("Save failed. Check console.");
+      return;
+    }
+
+    console.log("Saved successfully:", result);
+    alert("Saved to GitHub successfully!");
+  } catch (error) {
+    console.error("Network error:", error);
+    alert("Network error. Check console.");
+  }
+}
+
 
   showSaveStatus("Saved ✓");
   setTimeout(fetchDataLastCommit,2000);
