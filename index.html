@@ -25,21 +25,39 @@ h1 { text-align: center; margin-bottom: 5px; }
 .summary { background:#f4f6f8; padding:12px; border-radius:12px; margin-bottom:20px; }
 .summary li { font-weight:bold; padding:4px 0; }
 
+.table-wrapper { overflow-x:auto; }
 table { border-collapse: collapse; width:100%; }
 th, td { border:1px solid #ddd; padding:8px; }
 th { background:#f0f0f0; }
 
 .past-due { background-color:#ffe5e5; }
 
-select {
-  padding:4px;
-  border-radius:6px;
+.mobile-group { margin-bottom:20px; }
+.mobile-date {
+  font-size:18px;
+  font-weight:bold;
+  padding:10px;
+  background:#e9ecef;
+  border-radius:10px;
+  cursor:pointer;
 }
+.mobile-cards { margin-top:10px; display:none; }
 
-input[type="checkbox"] {
-  width:20px;
-  height:20px;
+.card {
+  border:1px solid #ddd;
+  border-radius:12px;
+  padding:12px;
+  margin-bottom:10px;
 }
+.card.past-due { background-color:#ffe5e5; }
+
+.card-row { margin-bottom:6px; }
+
+select { padding:4px; border-radius:6px; }
+input[type="checkbox"] { width:20px; height:20px; }
+
+@media (max-width:768px) { .desktop-view { display:none; } }
+@media (min-width:769px) { .mobile-view { display:none; } }
 </style>
 </head>
 
@@ -49,7 +67,7 @@ input[type="checkbox"] {
 
 <div id="versionLabel">
   <div id="indexVersion"></div>
-  <div id="dataVersion">Loading data version...</div>
+  <div id="dataVersion">Loading...</div>
 </div>
 
 <div id="saveStatus"></div>
@@ -57,66 +75,250 @@ input[type="checkbox"] {
 
 <script>
 
-// ==========================
-// CONFIG
-// ==========================
-const VERSION = "v2.0.0";
-const owner = "snwhunter";
-const repo = "AndrewsHWTracker";
-const dataPath = "data.csv";
-const GITHUB_TOKEN = "REPLACE_WITH_TOKEN";
-
-// ==========================
-// VERSION DISPLAY
-// ==========================
+// ================= VERSION =================
+const VERSION = "v2.1.0";
 document.getElementById("indexVersion").textContent = "Index: " + VERSION;
 
-let lastCommitDate = null;
+const owner="snwhunter";
+const repo="AndrewsHWTracker";
+const dataPath="data.csv";
+const GITHUB_TOKEN="REPLACE_WITH_TOKEN";
 
-async function fetchDataLastCommit() {
-  try {
-    const response = await fetch(
+let lastCommitDate=null;
+
+async function fetchDataLastCommit(){
+  try{
+    const res=await fetch(
       `https://api.github.com/repos/${owner}/${repo}/commits?path=${dataPath}&per_page=1`
     );
-    const commits = await response.json();
-
-    if (commits && commits.length > 0) {
-      lastCommitDate = new Date(commits[0].commit.committer.date);
+    const commits=await res.json();
+    if(commits.length){
+      lastCommitDate=new Date(commits[0].commit.committer.date);
       updateRelativeTime();
     }
-  } catch {
-    document.getElementById("dataVersion").textContent = "Data: Error";
+  }catch{
+    document.getElementById("dataVersion").textContent="Data: Error";
   }
 }
 
-function updateRelativeTime() {
-  if (!lastCommitDate) return;
-
-  const now = new Date();
-  const diffMs = now - lastCommitDate;
-  const diffMinutes = Math.floor(diffMs / 60000);
+function updateRelativeTime(){
+  if(!lastCommitDate) return;
+  const now=new Date();
+  const mins=Math.floor((now-lastCommitDate)/60000);
 
   let text;
-  if (diffMinutes < 1) {
-    text = "Updated just now";
-  } else if (diffMinutes === 1) {
-    text = "Updated 1 minute ago";
-  } else if (diffMinutes < 60) {
-    text = `Updated ${diffMinutes} minutes ago`;
-  } else {
-    const hours = Math.floor(diffMinutes / 60);
-    text = `Updated ${hours} hour${hours > 1 ? "s" : ""} ago`;
+  if(mins<1) text="Updated just now";
+  else if(mins===1) text="Updated 1 minute ago";
+  else if(mins<60) text=`Updated ${mins} minutes ago`;
+  else{
+    const hrs=Math.floor(mins/60);
+    text=`Updated ${hrs} hour${hrs>1?"s":""} ago`;
   }
-
-  document.getElementById("dataVersion").textContent = text;
+  document.getElementById("dataVersion").textContent=text;
 }
+setInterval(updateRelativeTime,60000);
 
-setInterval(updateRelativeTime, 60000);
-
-// ==========================
-// LOAD CSV
-// ==========================
-async function loadCSV() {
-  const res = await fetch(
+// ================= CSV =================
+async function loadCSV(){
+  const res=await fetch(
     `https://snwhunter.github.io/AndrewsHWTracker/data.csv?cacheBust=${Date.now()}`
   );
+  return await res.text();
+}
+
+function parseCSV(text){
+  const lines=text.split("\n").filter(l=>l.trim()!=="");
+  const headers=lines[0].split(",").map(h=>h.trim());
+  const data=lines.slice(1).map((line,idx)=>{
+    const vals=line.split(",");
+    const obj={__row:idx};
+    headers.forEach((h,i)=>obj[h]=vals[i]?vals[i].trim():"");
+    return obj;
+  });
+  return{headers,data};
+}
+
+// ================= STATUS LOGIC =================
+function isAndrewDone(val){
+  const s=(val||"").toLowerCase();
+  return s==="completed"||s==="turned in";
+}
+
+function isRowPastDue(row){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const rowDate=new Date(row.Date);
+
+  return rowDate<today &&
+    (!isAndrewDone(row["Andrew"]) ||
+     (row["Canvas"]||"").toLowerCase()!=="true" ||
+     (row["Verified"]||"").toLowerCase()!=="true");
+}
+
+function aggregateStatusCounts(data){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const counts={andrew:0,canvas:0,verified:0};
+
+  data.forEach(row=>{
+    const rowDate=new Date(row.Date);
+    if(rowDate<today){
+      if(!isAndrewDone(row["Andrew"])) counts.andrew++;
+      if((row["Canvas"]||"").toLowerCase()!=="true") counts.canvas++;
+      if((row["Verified"]||"").toLowerCase()!=="true") counts.verified++;
+    }
+  });
+  return counts;
+}
+
+// ================= SAVE =================
+let saveTimeout=null;
+
+function handleDropdownChange(el){
+  const row=window.data.find(r=>r.__row==el.dataset.row);
+  row["Andrew"]=el.value;
+  triggerSave();
+}
+
+function handleCheckboxChange(el){
+  const row=window.data.find(r=>r.__row==el.dataset.row);
+  row[el.dataset.col]=el.checked?"true":"false";
+  triggerSave();
+}
+
+function triggerSave(){
+  showSaveStatus("Saving...");
+  clearTimeout(saveTimeout);
+  saveTimeout=setTimeout(saveToGitHub,800);
+}
+
+function showSaveStatus(text){
+  const el=document.getElementById("saveStatus");
+  el.textContent=text;
+  if(text.includes("Saved")) setTimeout(()=>el.textContent="",2000);
+}
+
+async function saveToGitHub(){
+  const updatedCSV=[
+    window.headers.join(","),
+    ...window.data.map(r=>window.headers.map(h=>r[h]||"").join(","))
+  ].join("\n");
+
+  const url=`https://api.github.com/repos/${owner}/${repo}/contents/${dataPath}`;
+  const meta=await (await fetch(url)).json();
+
+  await fetch(url,{
+    method:"PUT",
+    headers:{
+      "Authorization":"token "+GITHUB_TOKEN,
+      "Content-Type":"application/json"
+    },
+    body:JSON.stringify({
+      message:"Auto-update HW status",
+      content:btoa(unescape(encodeURIComponent(updatedCSV))),
+      sha:meta.sha
+    })
+  });
+
+  showSaveStatus("Saved ✓");
+  setTimeout(fetchDataLastCommit,2000);
+}
+
+// ================= RENDER =================
+function renderSummary(counts){
+  const container=document.getElementById("content");
+  const div=document.createElement("div");
+  div.className="summary";
+  div.innerHTML=`
+    <h2>Past Due Status</h2>
+    <ul>
+      <li>Andrew Missing: ${counts.andrew}</li>
+      <li>Canvas Missing: ${counts.canvas}</li>
+      <li>Verified Missing: ${counts.verified}</li>
+    </ul>
+  `;
+  container.appendChild(div);
+}
+
+function groupByDate(data){
+  const groups={};
+  data.forEach(row=>{
+    if(!groups[row.Date]) groups[row.Date]=[];
+    groups[row.Date].push(row);
+  });
+  return groups;
+}
+
+function renderGroups(groups){
+  const container=document.getElementById("content");
+
+  Object.keys(groups).forEach(date=>{
+    const rows=groups[date];
+
+    const desktopDiv=document.createElement("div");
+    desktopDiv.className="desktop-view";
+
+    const table=document.createElement("table");
+    const headers=window.headers;
+
+    table.innerHTML="<tr>"+headers.map(h=>`<th>${h}</th>`).join("")+"</tr>";
+
+    rows.forEach(row=>{
+      let rowHTML="<tr"+(isRowPastDue(row)?" class='past-due'":"")+">";
+
+      headers.forEach(h=>{
+        if(h==="Andrew"){
+          let current=row[h]||"Not Started";
+          if(current==="true") current="Completed";
+          rowHTML+=`
+            <td>
+              <select data-row="${row.__row}"
+                      onchange="handleDropdownChange(this)">
+                <option ${current==="Not Started"?"selected":""}>Not Started</option>
+                <option ${current==="In Progress"?"selected":""}>In Progress</option>
+                <option ${current==="Completed"?"selected":""}>Completed</option>
+                <option ${current==="Turned In"?"selected":""}>Turned In</option>
+              </select>
+            </td>
+          `;
+        }
+        else if(h==="Canvas"||h==="Verified"){
+          const checked=(row[h]||"").toLowerCase()==="true";
+          rowHTML+=`
+            <td>
+              <input type="checkbox"
+                     data-row="${row.__row}"
+                     data-col="${h}"
+                     onchange="handleCheckboxChange(this)"
+                     ${checked?"checked":""}>
+            </td>
+          `;
+        }
+        else{
+          rowHTML+=`<td>${row[h]}</td>`;
+        }
+      });
+
+      rowHTML+="</tr>";
+      table.innerHTML+=rowHTML;
+    });
+
+    desktopDiv.innerHTML=`<h2>${date}</h2>`;
+    desktopDiv.appendChild(table);
+    container.appendChild(desktopDiv);
+  });
+}
+
+// ================= INIT =================
+(async function(){
+  await fetchDataLastCommit();
+  const csvText=await loadCSV();
+  const parsed=parseCSV(csvText);
+  window.headers=parsed.headers;
+  window.data=parsed.data;
+
+  renderSummary(aggregateStatusCounts(window.data));
+  renderGroups(groupByDate(window.data));
+})();
+</script>
+
+</body>
+</html>
