@@ -32,7 +32,7 @@ input[type="checkbox"] { width:20px; height:20px; }
 
 <h1>Andrew's HW Tracker</h1>
 <div id="versionLabel">
-  <div id="indexVersion">Dashboard: v3.3.1</div>
+  <div id="indexVersion">Dashboard: v3.3.2</div>
   <div id="dataVersion">Loading...</div>
 </div>
 <div id="saveStatus"></div>
@@ -142,7 +142,7 @@ async function saveToGitHub(){
         body: JSON.stringify({
           event_type: "update_csv",
           client_payload: {
-            content: content
+            content: btoa(unescape(encodeURIComponent(content)))
           }
         })
       }
