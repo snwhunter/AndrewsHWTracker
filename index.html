@@ -16,6 +16,8 @@ table { border-collapse:collapse; width:100%; }
 th, td { border:1px solid #ddd; padding:8px; }
 th { background:#f0f0f0; }
 .past-due { background-color:#ffe5e5; }
+.submitted { background-color: purple; color: white; }
+.verified { background-color: green; color: white; }
 select { padding:4px; border-radius:6px; }
 input[type="checkbox"] { width:20px; height:20px; }
 .mobile-group { margin-bottom:20px; }
@@ -23,6 +25,8 @@ input[type="checkbox"] { width:20px; height:20px; }
 .mobile-cards { margin-top:10px; display:none; }
 .card { border:1px solid #ddd; border-radius:12px; padding:12px; margin-bottom:10px; }
 .card.past-due { background-color:#ffe5e5; }
+.card.submitted { background-color: purple; color: white; }
+.card.verified { background-color: green; color: white; }
 .card-row { margin-bottom:6px; }
 @media (max-width:768px){ .desktop-view { display:none; } }
 @media (min-width:769px){ .mobile-view { display:none; } }
@@ -32,7 +36,7 @@ input[type="checkbox"] { width:20px; height:20px; }
 
 <h1>Andrew's HW Tracker</h1>
 <div id="versionLabel">
-  <div id="indexVersion">Dashboard: v3.3.3</div>
+  <div id="indexVersion">Dashboard: v3.3.4</div>
   <div id="dataVersion">Loading...</div>
 </div>
 <div id="saveStatus"></div>
@@ -93,7 +97,7 @@ function parseCSV(text){
 }
 
 // ================= LOGIC =================
-function isAndrewDone(val){ return ["completed","Submitted"].includes((val||"").toLowerCase()); }
+function isAndrewDone(val){ return ["completed","submitted"].includes((val||"").toLowerCase()); }
 function isRowPastDue(row){
   const today=new Date(); today.setHours(0,0,0,0);
   const rowDate=new Date(row.Date);
