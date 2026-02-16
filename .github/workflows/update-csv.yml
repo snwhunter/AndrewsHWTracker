@@ -1,0 +1,26 @@
+name: Update CSV
+
+on:
+  repository_dispatch:
+    types: [update_csv]
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update CSV
+        run: |
+          echo "${{ github.event.client_payload.content }}" > data.csv
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data.csv
+          git commit -m "Update data.csv from webpage" || echo "No changes"
+          git push
