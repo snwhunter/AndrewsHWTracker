@@ -32,7 +32,7 @@ input[type="checkbox"] { width:20px; height:20px; }
 
 <h1>Andrew's HW Tracker</h1>
 <div id="versionLabel">
-  <div id="indexVersion">Dashboard: v3.3.2</div>
+  <div id="indexVersion">Dashboard: v3.3.3</div>
   <div id="dataVersion">Loading...</div>
 </div>
 <div id="saveStatus"></div>
@@ -194,7 +194,16 @@ function renderTable(){
   container.innerHTML="";
   renderSummary();
   const groups = groupByDate(windowData);
-  Object.keys(groups).sort().forEach(date=>{
+  //Object.keys(groups).sort().forEach(date=>{
+  Object.keys(groups)
+  .sort((a,b)=>{
+    const [am,ad,ay] = a.split("/");
+    const [bm,bd,by] = b.split("/");
+    const dateA = new Date(ay, am-1, ad);
+    const dateB = new Date(by, bm-1, bd);
+    return dateA - dateB;
+  })
+  .forEach(date=>{
     const rows = groups[date];
 
     // Desktop Table
