@@ -8,3 +8,4 @@
 - Different color for Andrew's status
 - Auto update canvas col from python side
 - Auto merge from Cal read
+- Fix token issue
