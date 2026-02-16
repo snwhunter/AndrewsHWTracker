@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Andrew HW Tracker</title>
+<title>Andrew's HW Tracker</title>
 <style>
 body { font-family: Arial, sans-serif; margin:10px; position: relative; }
 h1 { text-align: center; margin-bottom: 5px; }
@@ -30,9 +30,9 @@ input[type="checkbox"] { width:20px; height:20px; }
 </head>
 <body>
 
-<h1>Andrew HW Tracker</h1>
+<h1>Andrew's HW Tracker</h1>
 <div id="versionLabel">
-  <div id="indexVersion">Dashboard: v3.2.3</div>
+  <div id="indexVersion">Dashboard: v3.3.0</div>
   <div id="dataVersion">Loading...</div>
 </div>
 <div id="saveStatus"></div>
@@ -44,7 +44,7 @@ const owner = "snwhunter";
 const repo = "AndrewsHWTracker";
 const branch = "main";
 const dataPath = "data.csv";
-const GITHUB_TOKEN = "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"; // ⚠️ Replace
+const GITHUB_TOKEN = "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"; // ⚠️ Replace
 
 let windowData = [];
 let headers = [];
@@ -119,40 +119,44 @@ function triggerSave(){
   clearTimeout(saveTimeout);
   saveTimeout = setTimeout(saveToGitHub,800);
 }
+
 function buildCSV(){
   const rows = [headers.join(",")];
   windowData.forEach(r=>rows.push(headers.map(h=>r[h]||"").join(",")));
   return rows.join("\n");
 }
+
 async function saveToGitHub(){
   const content = buildCSV();
-  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${dataPath}?ref=${branch}`;
+
   try{
-    const getRes = await fetch(url,{headers:{Authorization:`Bearer ${GITHUB_TOKEN}`}});
-    const fileData = await getRes.json();
-    const sha = fileData.sha;
-    const updateRes = await fetch(url,{
-      method:"PUT",
-      headers:{
-        Authorization:`Bearer ${GITHUB_TOKEN}`,
-        "Content-Type":"application/json"
-      },
-      body: JSON.stringify({
-        message:"Update data.csv",
-        content:btoa(unescape(encodeURIComponent(content))),
-        sha:sha,
-        branch:branch
-      })
-    });
-    if(updateRes.ok){
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/dispatches`,
+      {
+        method: "POST",
+        headers: {
+          "Accept": "application/vnd.github+json",
+          "Authorization": `Bearer ${GITHUB_TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          event_type: "update_csv",
+          client_payload: {
+            content: content
+          }
+        })
+      }
+    );
+
+    if(response.ok){
       document.getElementById("saveStatus").textContent="Saved ✓";
       setTimeout(()=>document.getElementById("saveStatus").textContent="",2000);
-      setTimeout(fetchLastCommit,2000);
-      renderTable();
+      setTimeout(fetchLastCommit,4000);
     }else{
       document.getElementById("saveStatus").textContent="Save Failed ❌";
-      console.error(await updateRes.json());
+      console.error(await response.json());
     }
+
   }catch(err){
     document.getElementById("saveStatus").textContent="Network Error ❌";
     console.error(err);
