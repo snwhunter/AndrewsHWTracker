@@ -13,9 +13,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Update CSV
+      - name: Decode and Write CSV
         run: |
-          echo "${{ github.event.client_payload.content }}" > data.csv
+          echo "${{ github.event.client_payload.content }}" | base64 --decode > data.csv
 
       - name: Commit changes
         run: |
