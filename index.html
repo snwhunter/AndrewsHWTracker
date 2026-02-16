@@ -32,7 +32,7 @@ input[type="checkbox"] { width:20px; height:20px; }
 
 <h1>Andrew HW Tracker</h1>
 <div id="versionLabel">
-  <div id="indexVersion">Dashboard: v3.2.2</div>
+  <div id="indexVersion">Dashboard: v3.2.3</div>
   <div id="dataVersion">Loading...</div>
 </div>
 <div id="saveStatus"></div>
@@ -93,7 +93,7 @@ function parseCSV(text){
 }
 
 // ================= LOGIC =================
-function isAndrewDone(val){ return ["completed","turned in"].includes((val||"").toLowerCase()); }
+function isAndrewDone(val){ return ["completed","Submitted"].includes((val||"").toLowerCase()); }
 function isRowPastDue(row){
   const today=new Date(); today.setHours(0,0,0,0);
   const rowDate=new Date(row.Date);
@@ -206,7 +206,7 @@ function renderTable(){
             <option ${current==="Not Started"?"selected":""}>Not Started</option>
             <option ${current==="In Progress"?"selected":""}>In Progress</option>
             <option ${current==="Completed"?"selected":""}>Completed</option>
-            <option ${current==="Turned In"?"selected":""}>Turned In</option>
+            <option ${current==="Submitted"?"selected":""}>Submitted</option>
           </select></td>`;
         }else if(h==="Canvas"||h==="Verified"){
           const checked=(row[h]||"").toLowerCase()==="true";
@@ -239,7 +239,7 @@ function renderTable(){
             <option ${current==="Not Started"?"selected":""}>Not Started</option>
             <option ${current==="In Progress"?"selected":""}>In Progress</option>
             <option ${current==="Completed"?"selected":""}>Completed</option>
-            <option ${current==="Turned In"?"selected":""}>Turned In</option>
+            <option ${current==="Submitted"?"selected":""}>Submitted</option>
           </select>`;
         }else if(h==="Canvas"||h==="Verified"){
           const checked=(row[h]||"").toLowerCase()==="true";
