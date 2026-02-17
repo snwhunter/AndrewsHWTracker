@@ -35,7 +35,7 @@ input[type="checkbox"] { width:20px; height:20px; }
 <h1>Andrew's HW Tracker</h1>
 
 <div id="versionLabel">
-  <div>Dashboard: v4.0.1 (Google Sheets)</div>
+  <div>Dashboard: v4.0.2 (Google Sheets)</div>
 </div>
 
 <div id="saveStatus"></div>
@@ -186,7 +186,7 @@ function renderTable(){
           </td>`;
         }
         else if(h==="Canvas"||h==="Verified"){
-          const checked=(row[h]||"").toLowerCase()==="true";
+          const checked=String(row[h]||"").toLowerCase()==="true";
           rowHTML+=`<td>
             <input type="checkbox" ${checked?"checked":""}
               onchange="updateCheckbox(${windowData.indexOf(row)},'${h}',this.checked)">
