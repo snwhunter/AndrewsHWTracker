@@ -35,7 +35,7 @@ input[type="checkbox"] { width:20px; height:20px; }
 <h1>Andrew's HW Tracker</h1>
 
 <div id="versionLabel">
-  <div>Dashboard: v4.0.0 (Google Sheets)</div>
+  <div>Dashboard: v4.0.1 (Google Sheets)</div>
 </div>
 
 <div id="saveStatus"></div>
@@ -58,29 +58,46 @@ async function loadData(){
 
 // ================= LOGIC =================
 function isAndrewDone(val){
-  return ["completed","submitted"].includes((val||"").toLowerCase());
+  return ["completed","submitted"].includes(
+    String(val || "").toLowerCase()
+  );
 }
 
 function isRowPastDue(row){
-  const today=new Date(); today.setHours(0,0,0,0);
+  const today=new Date(); 
+  today.setHours(0,0,0,0);
+
   const rowDate=new Date(row.Date);
+
+  const canvasVal = String(row["Canvas"]);
+  const verifiedVal = String(row["Verified"]);
+
   return rowDate<today &&
     (!isAndrewDone(row["Andrew"]) ||
-    (row["Canvas"]||"").toLowerCase()!=="true" ||
-    (row["Verified"]||"").toLowerCase()!=="true");
+    canvasVal !== "true" ||
+    verifiedVal !== "true");
 }
 
 function aggregateCounts(data){
-  const today=new Date(); today.setHours(0,0,0,0);
+  const today=new Date(); 
+  today.setHours(0,0,0,0);
+
   const counts={andrew:0,canvas:0,verified:0};
+
   data.forEach(r=>{
     const rowDate=new Date(r.Date);
+
     if(rowDate<today){
+
+      const canvasVal = String(r["Canvas"]);
+      const verifiedVal = String(r["Verified"]);
+
       if(!isAndrewDone(r["Andrew"])) counts.andrew++;
-      if((r["Canvas"]||"").toLowerCase()!=="true") counts.canvas++;
-      if((r["Verified"]||"").toLowerCase()!=="true") counts.verified++;
+      if(canvasVal !== "true") counts.canvas++;
+      if(verifiedVal !== "true") counts.verified++;
     }
   });
+
   return counts;
 }
 
