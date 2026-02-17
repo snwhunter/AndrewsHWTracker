@@ -35,7 +35,7 @@ input[type="checkbox"] { width:20px; height:20px; }
 <h1>Andrew's HW Tracker</h1>
 
 <div id="versionLabel">
-  <div>Dashboard: v4.0.4 (Google Sheets)</div>
+  <div>Dashboard: v4.0.5 (Google Sheets)</div>
   <div id="dataVersion"></div>
 </div>
 
@@ -59,10 +59,13 @@ async function loadData() {
   // ensure data exists
   const rawData = Array.isArray(json.data) ? json.data : [];
 
+  /*
   windowData = rawData.map(r => ({
     ...r,
     Date: formatDate(r.Date)  // convert ISO to MM/DD/YY
   }));
+  */
+  windowData = json.data;
 
   headers = Object.keys(windowData[0] || {});
 
