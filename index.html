@@ -35,7 +35,7 @@ input[type="checkbox"] { width:20px; height:20px; }
 <h1>Andrew's HW Tracker</h1>
 
 <div id="versionLabel">
-  <div>Dashboard: v4.0.3 (Google Sheets)</div>
+  <div>Dashboard: v4.0.4 (Google Sheets)</div>
 </div>
 <div id="dataVersion"></div>
 
@@ -51,21 +51,21 @@ let windowData = [];
 let headers = [];
 
 // ================= LOAD DATA =================
-async function loadData(){
+async function loadData() {
   const res = await fetch(API_URL);
   const json = await res.json();
 
-  //windowData = json.data;
-  //headers = Object.keys(windowData[0] || {});
-  windowData = json.data.map(r => {
-    return { 
-      ...r,
-      Date: formatDate(r.Date) // convert ISO → MM/DD/YY
-    };
-  });
+  // ensure data exists
+  const rawData = Array.isArray(json.data) ? json.data : [];
+
+  windowData = rawData.map(r => ({
+    ...r,
+    Date: formatDate(r.Date)  // convert ISO to MM/DD/YY
+  }));
+
   headers = Object.keys(windowData[0] || {});
 
-  // Show versions
+  // update version labels
   document.getElementById("dataVersion").textContent =
     `Sheet v${json.fileVersion || "?"} | API v${json.apiVersion || "?"}`;
 }
