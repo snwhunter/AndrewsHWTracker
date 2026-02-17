@@ -35,8 +35,9 @@ input[type="checkbox"] { width:20px; height:20px; }
 <h1>Andrew's HW Tracker</h1>
 
 <div id="versionLabel">
-  <div>Dashboard: v4.0.2 (Google Sheets)</div>
+  <div>Dashboard: v4.0.3 (Google Sheets)</div>
 </div>
+<div id="dataVersion"></div>
 
 <div id="saveStatus"></div>
 <div id="content"></div>
@@ -52,8 +53,31 @@ let headers = [];
 // ================= LOAD DATA =================
 async function loadData(){
   const res = await fetch(API_URL);
-  windowData = await res.json();
+  const json = await res.json();
+
+  //windowData = json.data;
+  //headers = Object.keys(windowData[0] || {});
+  windowData = json.data.map(r => {
+    return { 
+      ...r,
+      Date: formatDate(r.Date) // convert ISO → MM/DD/YY
+    };
+  });
   headers = Object.keys(windowData[0] || {});
+
+  // Show versions
+  document.getElementById("dataVersion").textContent =
+    `Sheet v${json.fileVersion || "?"} | API v${json.apiVersion || "?"}`;
+}
+
+// ================= HELPERS ===============
+function formatDate(isoString) {
+  if (!isoString) return "";
+  const d = new Date(isoString);
+  const month = d.getMonth() + 1; // months 0-11
+  const day = d.getDate();
+  const year = String(d.getFullYear()).slice(-2); // last 2 digits
+  return `${month}/${day}/${year}`;
 }
 
 // ================= LOGIC =================
