@@ -70,7 +70,7 @@ async function loadData() {
 
   // update version labels
   document.getElementById("dataVersion").textContent =
-    `Sheet v${json.fileVersion || "?"} | API v${json.apiVersion || "?"}`;
+    `${json.fileVersion || "?"} | API v${json.apiVersion || "?"}`;
 }
 
 // ================= HELPERS ===============
