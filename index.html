@@ -102,7 +102,7 @@ table {
 <h1>Andrew's HW Dashboard</h1>
 
 <div id="versionLabel">
-  <div>Dashboard: v4.2.4 (Google Sheets)</div>
+  <div>Dashboard: v4.3.0 (Google Sheets)</div>
   <div id="dataVersion"></div>
 </div>
 
@@ -279,7 +279,7 @@ function renderSummary(){
   container.appendChild(div);
 }
 
-function renderTable(){
+/*function renderTable(){
   const container=document.getElementById("content");
   container.innerHTML="";
   renderSummary();
@@ -346,6 +346,129 @@ function renderTable(){
     tableWrapper.appendChild(table);
     desktopDiv.appendChild(tableWrapper);
     container.appendChild(desktopDiv);
+  });
+}*/
+
+function renderTable(){
+  const container=document.getElementById("content");
+  container.innerHTML="";
+  renderSummary();
+
+  const groups=groupByDate(windowData);
+
+  Object.keys(groups)
+  .sort((a,b)=>{
+    const [am,ad,ay]=a.split("/");
+    const [bm,bd,by]=b.split("/");
+    return new Date(ay,am-1,ad)-new Date(by,bm-1,bd);
+  })
+  .forEach(date=>{
+    const rows=groups[date];
+    const groupClass = isGroupPastDue(date) ? getGroupClass(rows) : "";
+
+    /* ================= DESKTOP ================= */
+    const desktopDiv=document.createElement("div");
+    desktopDiv.className="desktop-view " + groupClass;
+
+    const tableWrapper=document.createElement("div");
+    tableWrapper.className="table-wrapper";
+
+    const table=document.createElement("table");
+    table.innerHTML="<tr>"+headers.filter(h=>h!=="Event").map(h=>`<th>${h}</th>`).join("")+"</tr>";
+
+    rows.forEach((row)=>{
+      const statusClass = getRowStatusClass(row);
+      let rowHTML = `<tr class="${statusClass} ${isRowPastDue(row) ? 'past-due' : ''}">`;
+
+      headers.forEach(h=>{
+        if(h==="Event") return;
+
+        if(h==="Andrew"){
+          let current=row[h]||"Not Started";
+          rowHTML+=`<td>
+            <select onchange="updateAndrew(${windowData.indexOf(row)},this.value)">
+              <option ${current==="Not Started"?"selected":""}>Not Started</option>
+              <option ${current==="In Progress"?"selected":""}>In Progress</option>
+              <option ${current==="Completed"?"selected":""}>Completed</option>
+              <option ${current==="Submitted"?"selected":""}>Submitted</option>
+            </select>
+          </td>`;
+        }
+        else if(h==="Canvas"||h==="Verified"){
+          const checked=String(row[h]||"").toLowerCase()==="true";
+          rowHTML+=`<td>
+            <input type="checkbox" ${checked?"checked":""}
+              onchange="updateCheckbox(${windowData.indexOf(row)},'${h}',this.checked)">
+          </td>`;
+        }
+        else{
+          rowHTML+=`<td>${row[h]}</td>`;
+        }
+      });
+
+      rowHTML+="</tr>";
+      table.innerHTML+=rowHTML;
+    });
+
+    desktopDiv.innerHTML=`<h2>${date}</h2>`;
+    tableWrapper.appendChild(table);
+    desktopDiv.appendChild(tableWrapper);
+    container.appendChild(desktopDiv);
+
+    /* ================= MOBILE ================= */
+    const mobileGroup = document.createElement("div");
+    mobileGroup.className = "mobile-view mobile-group " + groupClass;
+
+    const dateHeader = document.createElement("div");
+    dateHeader.className = "mobile-date";
+    dateHeader.textContent = date;
+
+    const cardsContainer = document.createElement("div");
+    cardsContainer.className = "mobile-cards";
+
+    dateHeader.onclick = () => {
+      cardsContainer.style.display =
+        cardsContainer.style.display === "block" ? "none" : "block";
+    };
+
+    rows.forEach((row)=>{
+      const statusClass = getRowStatusClass(row);
+      const card = document.createElement("div");
+      card.className = `card ${statusClass} ${isRowPastDue(row) ? 'past-due' : ''}`;
+
+      const rowIndex = windowData.indexOf(row);
+      const current = row["Andrew"] || "Not Started";
+      const canvasChecked = String(row["Canvas"]).toLowerCase() === "true";
+      const verifiedChecked = String(row["Verified"]).toLowerCase() === "true";
+
+      card.innerHTML = `
+        <div><strong>${row["Class"] || ""}</strong></div>
+        <div>${row["Assignment"] || ""}</div>
+        <div style="margin-top:8px;">
+          <select onchange="updateAndrew(${rowIndex},this.value)">
+            <option ${current==="Not Started"?"selected":""}>Not Started</option>
+            <option ${current==="In Progress"?"selected":""}>In Progress</option>
+            <option ${current==="Completed"?"selected":""}>Completed</option>
+            <option ${current==="Submitted"?"selected":""}>Submitted</option>
+          </select>
+        </div>
+        <div style="margin-top:8px;">
+          Canvas 
+          <input type="checkbox" ${canvasChecked?"checked":""}
+            onchange="updateCheckbox(${rowIndex},'Canvas',this.checked)">
+          &nbsp;&nbsp;
+          Verified 
+          <input type="checkbox" ${verifiedChecked?"checked":""}
+            onchange="updateCheckbox(${rowIndex},'Verified',this.checked)">
+        </div>
+      `;
+
+      cardsContainer.appendChild(card);
+    });
+
+    mobileGroup.appendChild(dateHeader);
+    mobileGroup.appendChild(cardsContainer);
+    container.appendChild(mobileGroup);
   });
 }
 
