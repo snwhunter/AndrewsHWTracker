@@ -299,6 +299,7 @@ function renderTable(){
     if (isGroupPastDue(date)) {
       groupClass = getGroupClass(rows);
     }
+    const desktopDiv=document.createElement("div");
     desktopDiv.className="desktop-view " + groupClass;
 
     const tableWrapper=document.createElement("div");
