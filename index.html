@@ -28,6 +28,49 @@ input[type="checkbox"] { width:20px; height:20px; }
 .card.past-due { background-color:#ffe5e5; }
 @media (max-width:768px){ .desktop-view { display:none; } }
 @media (min-width:769px){ .mobile-view { display:none; } }
+
+/* ===== Column Sizing & Alignment ===== */
+
+/* Fixed column widths */
+th:nth-child(1), td:nth-child(1) { width:110px; text-align:center; } /* UID */
+th:nth-child(2), td:nth-child(2) { width:110px; text-align:center; } /* Date */
+th:nth-child(3), td:nth-child(3) { width:220px; } /* Title / Assignment */
+th:nth-child(4), td:nth-child(4) { width:160px; } /* Andrew */
+th:nth-child(5), td:nth-child(5),
+th:nth-child(6), td:nth-child(6) { 
+  width:100px; 
+  text-align:center;   /* Canvas + Verified */
+}
+
+/* Center checkboxes cleanly */
+td input[type="checkbox"] {
+  display:block;
+  margin:0 auto;
+}
+
+/* ===== Scroll Container ===== */
+.table-wrapper {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 70vh;   /* adjust height as desired */
+  position: relative;
+}
+
+/* ===== Sticky Header ===== */
+th {
+  position: sticky;
+  top: 0;
+  background: #f0f0f0;   /* must re-declare background */
+  z-index: 5;
+}
+
+/* Ensure proper layout */
+table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+}
+  
 </style>
 </head>
 <body>
@@ -35,7 +78,7 @@ input[type="checkbox"] { width:20px; height:20px; }
 <h1>Andrew's HW Dashboard</h1>
 
 <div id="versionLabel">
-  <div>Dashboard: v4.0.13 (Google Sheets)</div>
+  <div>Dashboard: v4.1.0 (Google Sheets)</div>
   <div id="dataVersion"></div>
 </div>
 
