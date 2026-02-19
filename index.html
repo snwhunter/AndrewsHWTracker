@@ -32,10 +32,10 @@ input[type="checkbox"] { width:20px; height:20px; }
 </head>
 <body>
 
-<h1>Andrew's HW Tracker</h1>
+<h1>Andrew's HW Dashboard</h1>
 
 <div id="versionLabel">
-  <div>Dashboard: v4.0.12 (Google Sheets)</div>
+  <div>Dashboard: v4.0.13 (Google Sheets)</div>
   <div id="dataVersion"></div>
 </div>
 
@@ -70,7 +70,7 @@ async function loadData() {
 
   // update version labels
   document.getElementById("dataVersion").textContent =
-    `${json.fileVersion || "?"} | API v${json.apiVersion || "?"}`;
+    `${json.fileVersion || "?"} | API ${json.apiVersion || "?"}`;
 }
 
 // ================= HELPERS ===============
