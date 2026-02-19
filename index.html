@@ -102,7 +102,7 @@ table {
 <h1>Andrew's HW Dashboard</h1>
 
 <div id="versionLabel">
-  <div>Dashboard: v4.2.2 (Google Sheets)</div>
+  <div>Dashboard: v4.2.3 (Google Sheets)</div>
   <div id="dataVersion"></div>
 </div>
 
@@ -285,8 +285,11 @@ function renderTable(){
   .forEach(date=>{
     const rows=groups[date];
 
-    const desktopDiv=document.createElement("div");
-    desktopDiv.className="desktop-view " + getGroupClass(rows);
+    let groupClass = "";
+    if (isGroupPastDue(date)) {
+      groupClass = getGroupClass(rows);
+    }
+    desktopDiv.className="desktop-view " + groupClass;
 
     const tableWrapper=document.createElement("div");
     tableWrapper.className="table-wrapper";
