@@ -75,7 +75,7 @@ table {
 <h1>Andrew's HW Dashboard</h1>
 
 <div id="versionLabel">
-  <div>Dashboard: v4.4.0</div>
+  <div>Dashboard: v4.5.0 (Canvas Visible)</div>
   <div id="dataVersion"></div>
 </div>
 
@@ -83,7 +83,6 @@ table {
 <div id="content"></div>
 
 <script>
-
 const API_URL = "https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 let windowData = [];
@@ -255,6 +254,7 @@ function renderTable(){
     const rows=groups[date];
     const groupClass = isGroupPastDue(date) ? getGroupClass(rows) : "";
 
+    /* ================= DESKTOP ================= */
     const desktopDiv=document.createElement("div");
     desktopDiv.className="desktop-view " + groupClass;
 
@@ -283,8 +283,7 @@ function renderTable(){
           </td>`;
         }
         else if(h==="Canvas"){
-          const complete = isCanvasComplete(row[h]);
-          rowHTML+=`<td>${complete ? "✓" : ""}</td>`;
+          rowHTML+=`<td>${row[h] || ""}</td>`;
         }
         else if(h==="Verified"){
           const checked=String(row[h])==="true";
@@ -306,6 +305,59 @@ function renderTable(){
     tableWrapper.appendChild(table);
     desktopDiv.appendChild(tableWrapper);
     container.appendChild(desktopDiv);
+
+    /* ================= MOBILE ================= */
+    const mobileGroup = document.createElement("div");
+    mobileGroup.className = "mobile-view mobile-group " + groupClass;
+
+    const dateHeader = document.createElement("div");
+    dateHeader.className = "mobile-date";
+    dateHeader.textContent = date;
+
+    const cardsContainer = document.createElement("div");
+    cardsContainer.className = "mobile-cards";
+
+    dateHeader.onclick = () => {
+      cardsContainer.style.display =
+        cardsContainer.style.display === "block" ? "none" : "block";
+    };
+
+    rows.forEach((row)=>{
+      const statusClass = getRowStatusClass(row);
+      const card = document.createElement("div");
+      card.className = `card ${statusClass} ${isRowPastDue(row) ? 'past-due' : ''}`;
+
+      const rowIndex = windowData.indexOf(row);
+      const current = row["Andrew"] || "Not Started";
+      const verifiedChecked = String(row["Verified"]).toLowerCase() === "true";
+
+      const canvasStr = row["Canvas"] || "";
+
+      card.innerHTML = `
+        <div><strong>${row["Class"] || ""}</strong></div>
+        <div>${row["Assignment"] || ""}</div>
+        <div>Canvas: ${canvasStr}</div>
+        <div style="margin-top:8px;">
+          <select onchange="updateAndrew(${rowIndex},this.value)">
+            <option ${current==="Not Started"?"selected":""}>Not Started</option>
+            <option ${current==="In Progress"?"selected":""}>In Progress</option>
+            <option ${current==="Completed"?"selected":""}>Completed</option>
+            <option ${current==="Submitted"?"selected":""}>Submitted</option>
+          </select>
+        </div>
+        <div style="margin-top:8px;">
+          Verified 
+          <input type="checkbox" ${verifiedChecked?"checked":""}
+            onchange="updateCheckbox(${rowIndex},'Verified',this.checked)">
+        </div>
+      `;
+
+      cardsContainer.appendChild(card);
+    });
+
+    mobileGroup.appendChild(dateHeader);
+    mobileGroup.appendChild(cardsContainer);
+    container.appendChild(mobileGroup);
   });
 }
 
@@ -325,7 +377,6 @@ function updateCheckbox(rowIndex,col,value){
   await loadData();
   renderTable();
 })();
-
 </script>
 </body>
 </html>
