@@ -60,10 +60,14 @@ th:nth-child(2), td:nth-child(2) { width:110px; text-align:center; } /* Date */
 th:nth-child(3), td:nth-child(3) { width:275px; } /* Class / Assignment */
 th:nth-child(4), td:nth-child(4) { width:350px; } /* Class / Assignment */
 th:nth-child(5), td:nth-child(5) { width:120px; text-align:center; } /* Andrew */
-th:nth-child(6), td:nth-child(6), 
+/* Canvas is now free‑form text; give more room and left align */
+th:nth-child(6), td:nth-child(6) { 
+  width:120px; 
+  text-align:left;   /* Canvas text */
+}
 th:nth-child(7), td:nth-child(7) { 
   width:70px; 
-  text-align:center;   /* Canvas + Verified */
+  text-align:center;   /* Verified */
 }
 
 /* Center checkboxes cleanly */
@@ -102,7 +106,7 @@ table {
 <h1>Andrew's HW Dashboard</h1>
 
 <div id="versionLabel">
-  <div>Dashboard: v4.3.0 (Google Sheets)</div>
+  <div>Dashboard: v4.4.0 (Google Sheets)</div>
   <div id="dataVersion"></div>
 </div>
 
@@ -173,18 +177,17 @@ function isRowPastDue(row){
 
   const rowDate=new Date(row.Date);
 
-  const canvasVal = String(row["Canvas"]);
+  const canvasVal = String(row["Canvas"] || "");
   const verifiedVal = String(row["Verified"]);
 
   return rowDate<today &&
     (!isAndrewDone(row["Andrew"]) ||
-    canvasVal !== "true" ||
+    !canvasVal.startsWith("[") ||
     verifiedVal !== "true");
-}
+} 
 
 function getRowStatusRank(row){
   const andrew = String(row["Andrew"] || "").toLowerCase();
-  const canvas = String(row["Canvas"] || "") === "true";
   const verified = String(row["Verified"] || "") === "true";
 
   if (verified) return 4;
@@ -225,17 +228,17 @@ function aggregateCounts(data){
 
     if(rowDate<today){
 
-      const canvasVal = String(r["Canvas"]);
+      const canvasVal = String(r["Canvas"] || "");
       const verifiedVal = String(r["Verified"]);
 
       if(!isAndrewDone(r["Andrew"])) counts.andrew++;
-      if(canvasVal !== "true") counts.canvas++;
+      if(!canvasVal.startsWith("[")) counts.canvas++;
       if(verifiedVal !== "true") counts.verified++;
     }
   });
 
   return counts;
-}
+} 
 
 // ================= SAVE =================
 function triggerSave(row){
@@ -394,34 +397,20 @@ function renderTable(){
             </select>
           </td>`;
         }
-        else if(h==="Canvas"||h==="Verified"){
+        else if(h==="Canvas"){
+          const current = row[h] || "";
+          rowHTML+=`<td>
+            <input type="text" value="${current}"
+              onchange="updateCanvas(${windowData.indexOf(row)},this.value)">
+          </td>`;
+        }
+        else if(h==="Verified"){
           const checked=String(row[h]||"").toLowerCase()==="true";
           rowHTML+=`<td>
             <input type="checkbox" ${checked?"checked":""}
-              onchange="updateCheckbox(${windowData.indexOf(row)},'${h}',this.checked)">
+              onchange="updateCheckbox(${windowData.indexOf(row)},'Verified',this.checked)">
           </td>`;
         }
-        else{
-          rowHTML+=`<td>${row[h]}</td>`;
-        }
-      });
-
-      rowHTML+="</tr>";
-      table.innerHTML+=rowHTML;
-    });
-
-    desktopDiv.innerHTML=`<h2>${date}</h2>`;
-    tableWrapper.appendChild(table);
-    desktopDiv.appendChild(tableWrapper);
-    container.appendChild(desktopDiv);
-
-    /* ================= MOBILE ================= */
-    const mobileGroup = document.createElement("div");
-    mobileGroup.className = "mobile-view mobile-group " + groupClass;
-
-    const dateHeader = document.createElement("div");
-    dateHeader.className = "mobile-date";
-    dateHeader.textContent = date;
 
     const cardsContainer = document.createElement("div");
     cardsContainer.className = "mobile-cards";
@@ -438,7 +427,7 @@ function renderTable(){
 
       const rowIndex = windowData.indexOf(row);
       const current = row["Andrew"] || "Not Started";
-      const canvasChecked = String(row["Canvas"]).toLowerCase() === "true";
+      const canvasVal = row["Canvas"] || "";
       const verifiedChecked = String(row["Verified"]).toLowerCase() === "true";
 
       card.innerHTML = `
@@ -454,8 +443,8 @@ function renderTable(){
         </div>
         <div style="margin-top:8px;">
           Canvas 
-          <input type="checkbox" ${canvasChecked?"checked":""}
-            onchange="updateCheckbox(${rowIndex},'Canvas',this.checked)">
+          <input type="text" value="${canvasVal}"
+            onchange="updateCanvas(${rowIndex},this.value)">
           &nbsp;&nbsp;
           Verified 
           <input type="checkbox" ${verifiedChecked?"checked":""}
@@ -482,6 +471,11 @@ function updateCheckbox(rowIndex,col,value){
   windowData[rowIndex][col]=value?"true":"false";
   triggerSave(windowData[rowIndex]);
 }
+
+function updateCanvas(rowIndex,value){
+  windowData[rowIndex]["Canvas"] = value;
+  triggerSave(windowData[rowIndex]);
+} 
 
 // ================= INIT =================
 (async function(){
