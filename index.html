@@ -106,7 +106,7 @@ table {
 <h1>Andrew's HW Dashboard</h1>
 
 <div id="versionLabel">
-  <div>Dashboard: v4.4.0 (Google Sheets)</div>
+  <div>Dashboard: v4.4.1 (Google Sheets)</div>
   <div id="dataVersion"></div>
 </div>
 
@@ -411,6 +411,24 @@ function renderTable(){
               onchange="updateCheckbox(${windowData.indexOf(row)},'Verified',this.checked)">
           </td>`;
         }
+      }); // end headers.forEach
+
+      rowHTML+="</tr>";
+      table.innerHTML+=rowHTML;
+    }); // end rows.forEach
+
+    desktopDiv.innerHTML=`<h2>${date}</h2>`;
+    tableWrapper.appendChild(table);
+    desktopDiv.appendChild(tableWrapper);
+    container.appendChild(desktopDiv);
+
+    /* ================= MOBILE ================= */
+    const mobileGroup = document.createElement("div");
+    mobileGroup.className = "mobile-view mobile-group " + groupClass;
+
+    const dateHeader = document.createElement("div");
+    dateHeader.className = "mobile-date";
+    dateHeader.textContent = date;
 
     const cardsContainer = document.createElement("div");
     cardsContainer.className = "mobile-cards";
