@@ -75,7 +75,7 @@ table {
 <h1>Andrew's HW Dashboard</h1>
 
 <div id="versionLabel">
-  <div>Dashboard: v4.5.1 (Google Sheets)</div>
+  <div>Dashboard: v4.5.2 (Google Sheets)</div>
   <div id="dataVersion"></div>
 </div>
 
@@ -326,17 +326,19 @@ function renderTable(){
       const statusClass = getRowStatusClass(row);
       const card = document.createElement("div");
       card.className = `card ${statusClass} ${isRowPastDue(row) ? 'past-due' : ''}`;
-
+    
       const rowIndex = windowData.indexOf(row);
       const current = row["Andrew"] || "Not Started";
       const verifiedChecked = String(row["Verified"]).toLowerCase() === "true";
-
+    
       const canvasStr = row["Canvas"] || "";
-
+      const notesStr = row["Notes"] || "";  // <- get notes
+    
       card.innerHTML = `
         <div><strong>${row["Class"] || ""}</strong></div>
         <div>${row["Assignment"] || ""}</div>
         <div>Canvas: ${canvasStr}</div>
+        <div>Notes: ${notesStr}</div>  <!-- <-- notes visible here -->
         <div style="margin-top:8px;">
           <select onchange="updateAndrew(${rowIndex},this.value)">
             <option ${current==="Not Started"?"selected":""}>Not Started</option>
@@ -351,7 +353,7 @@ function renderTable(){
             onchange="updateCheckbox(${rowIndex},'Verified',this.checked)">
         </div>
       `;
-
+    
       cardsContainer.appendChild(card);
     });
 
