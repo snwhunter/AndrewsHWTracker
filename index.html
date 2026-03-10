@@ -130,7 +130,7 @@ async function loadData(){
 
   // update version label
   document.getElementById("versionLabel").textContent=
-    `Dashboard: v4.8.5 | File: ${json.fileVersion||"?"} | API: ${json.apiVersion||"?"}`;
+    `Dashboard: v4.8.6 | File: ${json.fileVersion||"?"} | API: ${json.apiVersion||"?"}`;
 }
 
 /* DATE FORMAT */
@@ -202,8 +202,8 @@ function updateSummary(){
   const summaryDiv=document.querySelector("#header-info .summary");
   summaryDiv.innerHTML=`
     <div>Andrew Missing: ${counts.andrew}</div>
-    <div>| Canvas Missing: ${counts.canvas}</div>
-    <div>| Verified Missing: ${counts.verified}</div>`;
+    <div> | Canvas Missing: ${counts.canvas}</div>
+    <div> | Verified Missing: ${counts.verified}</div>`;
 }
 
 /* SAVE & UPDATE ROW */
