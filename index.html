@@ -105,9 +105,7 @@ input[type="checkbox"] { width:20px; height:20px; }
   <div id="header-info">
     <div id="versionLabel">Dashboard: ? | API: ?</div>
     <div class="summary">
-      <div>Andrew Missing: 0 </div>
-      <div>Canvas Missing: 0 </div>
-      <div>Verified Missing: 0 </div>
+      <div>:Summary:</div>
     </div>
   </div>
 </header>
@@ -132,7 +130,7 @@ async function loadData(){
 
   // update version label
   document.getElementById("versionLabel").textContent=
-    `Dashboard: v4.8.3 | File: ${json.fileVersion||"?"} | API: ${json.apiVersion||"?"}`;
+    `Dashboard: v4.8.4 | File: ${json.fileVersion||"?"} | API: ${json.apiVersion||"?"}`;
 }
 
 /* DATE FORMAT */
@@ -203,9 +201,9 @@ function updateSummary(){
   });
   const summaryDiv=document.querySelector("#header-info .summary");
   summaryDiv.innerHTML=`
-    <div>Andrew Missing: ${counts.andrew}</div>
-    <div>Canvas Missing: ${counts.canvas}</div>
-    <div>Verified Missing: ${counts.verified}</div>`;
+    <div>Andrew Missing: ${counts.andrew} </div>
+    <div>Canvas Missing: ${counts.canvas} </div>
+    <div>Verified Missing: ${counts.verified} </div>`;
 }
 
 /* SAVE & UPDATE ROW */
