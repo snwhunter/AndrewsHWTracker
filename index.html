@@ -12,42 +12,47 @@ body {
   margin: 0;
   display: flex;
   flex-direction: column;
-  height: 100vh; /* full viewport height */
+  height: 100vh;
+}
+
+header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #fff;
+  border-bottom: 1px solid #ddd;
 }
 
 h1 {
   text-align: center;
   margin: 0;
-  padding: 10px;
-  background: #fff;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  border-bottom: 1px solid #ddd;
+  padding: 5px;
 }
 
-#versionLabel {
-  position:absolute;
-  top:10px;
-  right:10px;
-  font-size:12px;
-  font-weight:bold;
-  color:#555;
-  text-align:right;
-  line-height:1.4;
+#header-info {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 10px;
+  font-size: 14px;
+  font-weight: bold;
 }
 
-#saveStatus { text-align:center; margin-bottom:10px; font-weight:bold; }
+#saveStatus {
+  text-align: center;
+  margin: 5px 0;
+  font-weight: bold;
+}
 
 /* SUMMARY */
 .summary {
   background:#f4f6f8;
-  padding:12px;
-  border-radius:12px;
-  margin-bottom:20px;
+  padding:5px 10px;
+  border-radius:8px;
+  display: flex;
+  justify-content: space-around;
+  font-size: 14px;
+  margin-top: 5px;
 }
-
-.summary li { font-weight:bold; padding:4px 0; }
 
 /* TABLE STYLING */
 table { border-collapse:collapse; width:100%; table-layout:fixed; }
@@ -85,25 +90,27 @@ input[type="checkbox"] { width:20px; height:20px; }
 /* SCROLLABLE CONTENT */
 #content {
   overflow-y: auto;
-  flex: 1; /* fills remaining height */
+  flex: 1; 
   padding: 10px;
 }
 
-.table-wrapper {
-  overflow-x:auto;
-  max-height: none; /* let table expand, scroll happens in #content */
-}
+.table-wrapper { overflow-x:auto; max-height: none; }
 </style>
 </head>
 
 <body>
 
-<h1>Andrew's HW Dashboard</h1>
-
-<div id="versionLabel">
-  <div>Dashboard: v4.8.0</div>
-  <div id="dataVersion"></div>
-</div>
+<header>
+  <h1>Andrew's HW Dashboard</h1>
+  <div id="header-info">
+    <div id="versionLabel">Dashboard: v4.8.1 | API: ?</div>
+    <div class="summary">
+      <div>Andrew Missing: 0</div>
+      <div>Canvas Missing: 0</div>
+      <div>Verified Missing: 0</div>
+    </div>
+  </div>
+</header>
 
 <div id="saveStatus"></div>
 <div id="content"></div>
@@ -123,8 +130,9 @@ async function loadData(){
   windowData=rawData.map(r=>({...r, Date:formatDate(r.Date)}));
   headers=Object.keys(windowData[0]||{});
 
-  document.getElementById("dataVersion").textContent=
-    `${json.fileVersion||"?"} | API ${json.apiVersion||"?"}`;
+  // update version label
+  document.getElementById("versionLabel").textContent=
+    `Dashboard: v4.7 | File: ${json.fileVersion||"?"} | API: ${json.apiVersion||"?"}`;
 }
 
 /* DATE FORMAT */
@@ -182,10 +190,10 @@ function getGroupClass(rows){
 }
 
 /* SUMMARY */
-function aggregateCounts(data){
-  const today=new Date(); today.setHours(0,0,0,0);
+function updateSummary(){
   const counts={andrew:0,canvas:0,verified:0};
-  data.forEach(r=>{
+  const today=new Date(); today.setHours(0,0,0,0);
+  windowData.forEach(r=>{
     const rowDate=new Date(r.Date);
     if(rowDate<today){
       if(!isAndrewDone(r["Andrew"])) counts.andrew++;
@@ -193,22 +201,14 @@ function aggregateCounts(data){
       if(String(r["Verified"])!=="true") counts.verified++;
     }
   });
-  return counts;
-}
-function updateSummary(){
-  const counts=aggregateCounts(windowData);
-  const summary=document.querySelector(".summary");
-  if(!summary) return;
-  summary.innerHTML=`
-    <h2>Past Due Status</h2>
-    <ul>
-      <li>Andrew Missing: ${counts.andrew}</li>
-      <li>Canvas Missing: ${counts.canvas}</li>
-      <li>Verified Missing: ${counts.verified}</li>
-    </ul>`;
+  const summaryDiv=document.querySelector("#header-info .summary");
+  summaryDiv.innerHTML=`
+    <div>Andrew Missing: ${counts.andrew}</div>
+    <div>Canvas Missing: ${counts.canvas}</div>
+    <div>Verified Missing: ${counts.verified}</div>`;
 }
 
-/* SAVE */
+/* SAVE & UPDATE ROW */
 function triggerSave(row,rowIndex){
   document.getElementById("saveStatus").textContent="Saving...";
   fetch(API_URL,{ method:"POST", body:JSON.stringify(row) })
@@ -219,8 +219,6 @@ function triggerSave(row,rowIndex){
     })
     .catch(()=>{ document.getElementById("saveStatus").textContent="Save Failed ❌"; });
 }
-
-/* ROW UI REFRESH */
 function refreshRowUI(rowIndex){
   const row=windowData[rowIndex];
   const rows=document.querySelectorAll("tbody tr");
@@ -248,26 +246,10 @@ function groupByDate(data){
   return groups;
 }
 
-/* RENDER */
-function renderSummary(){
-  const container=document.getElementById("content");
-  const counts=aggregateCounts(windowData);
-  const div=document.createElement("div");
-  div.className="summary";
-  div.innerHTML=`
-    <h2>Past Due Status</h2>
-    <ul>
-      <li>Andrew Missing: ${counts.andrew}</li>
-      <li>Canvas Missing: ${counts.canvas}</li>
-      <li>Verified Missing: ${counts.verified}</li>
-    </ul>`;
-  container.appendChild(div);
-}
-
+/* RENDER TABLE */
 function renderTable(){
   const container=document.getElementById("content");
   container.innerHTML="";
-  renderSummary();
   const groups=groupByDate(windowData);
   let globalIndex=0;
 
@@ -334,6 +316,7 @@ function updateCheckbox(rowIndex,col,value){
 (async function(){
   await loadData();
   renderTable();
+  updateSummary();
 })();
 </script>
 
