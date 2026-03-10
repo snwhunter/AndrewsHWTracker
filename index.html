@@ -6,9 +6,25 @@
 <title>Andrew's HW Dashboard</title>
 
 <style>
+/* BODY & LAYOUT */
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* full viewport height */
+}
 
-body { font-family: Arial, sans-serif; margin:10px; position: relative; }
-h1 { text-align: center; margin-bottom: 5px; }
+h1 {
+  text-align: center;
+  margin: 0;
+  padding: 10px;
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 1px solid #ddd;
+}
 
 #versionLabel {
   position:absolute;
@@ -23,6 +39,7 @@ h1 { text-align: center; margin-bottom: 5px; }
 
 #saveStatus { text-align:center; margin-bottom:10px; font-weight:bold; }
 
+/* SUMMARY */
 .summary {
   background:#f4f6f8;
   padding:12px;
@@ -32,43 +49,10 @@ h1 { text-align: center; margin-bottom: 5px; }
 
 .summary li { font-weight:bold; padding:4px 0; }
 
-table { border-collapse:collapse; width:100%; }
+/* TABLE STYLING */
+table { border-collapse:collapse; width:100%; table-layout:fixed; }
 
 th, td { border:1px solid #ddd; padding:8px; }
-
-th { background:#f0f0f0; }
-
-.past-due { background-color:#ff0000; }
-
-select { padding:4px; border-radius:6px; }
-
-input[type="checkbox"] { width:20px; height:20px; }
-
-@media (max-width:768px){ .desktop-view { display:none; } }
-
-@media (min-width:769px){ .mobile-view { display:none; } }
-
-/* Row status colors */
-
-.status-followingup { background:#fff3a0; }
-.status-completed { background:#e6ccff; }
-.status-submitted { background:#6a0dad; color:white; }
-.status-verified { background:#90EE90; color:white; }
-
-/* Date group borders */
-
-.group-notstarted { border-left:8px solid #ff0000; }
-.group-followingup { border-left:8px solid #ffd600; }
-.group-completed { border-left:8px solid #b266ff; }
-.group-submitted { border-left:8px solid #6a0dad; }
-.group-verified { border-left:8px solid #90EE90; }
-
-.table-wrapper {
-  overflow-x:auto;
-  overflow-y:auto;
-  max-height:70vh;
-}
-
 th {
   position:sticky;
   top:0;
@@ -76,11 +60,39 @@ th {
   z-index:5;
 }
 
-table {
-  table-layout:fixed;
-  width:100%;
+.past-due { background-color:#ff0000; }
+
+select { padding:4px; border-radius:6px; }
+input[type="checkbox"] { width:20px; height:20px; }
+
+/* MOBILE / DESKTOP VIEWS */
+@media (max-width:768px){ .desktop-view { display:none; } }
+@media (min-width:769px){ .mobile-view { display:none; } }
+
+/* ROW STATUS COLORS */
+.status-followingup { background:#fff3a0; }
+.status-completed { background:#e6ccff; }
+.status-submitted { background:#6a0dad; color:white; }
+.status-verified { background:#90EE90; color:white; }
+
+/* DATE GROUP BORDERS */
+.group-notstarted { border-left:8px solid #ff0000; }
+.group-followingup { border-left:8px solid #ffd600; }
+.group-completed { border-left:8px solid #b266ff; }
+.group-submitted { border-left:8px solid #6a0dad; }
+.group-verified { border-left:8px solid #90EE90; }
+
+/* SCROLLABLE CONTENT */
+#content {
+  overflow-y: auto;
+  flex: 1; /* fills remaining height */
+  padding: 10px;
 }
 
+.table-wrapper {
+  overflow-x:auto;
+  max-height: none; /* let table expand, scroll happens in #content */
+}
 </style>
 </head>
 
@@ -89,442 +101,240 @@ table {
 <h1>Andrew's HW Dashboard</h1>
 
 <div id="versionLabel">
-<div>Dashboard: v4.7</div>
-<div id="dataVersion"></div>
+  <div>Dashboard: v4.8.0</div>
+  <div id="dataVersion"></div>
 </div>
 
 <div id="saveStatus"></div>
 <div id="content"></div>
 
 <script>
-
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 let windowData=[];
 let headers=[];
 
 /* LOAD DATA */
-
 async function loadData(){
+  const res=await fetch(API_URL);
+  const json=await res.json();
+  const rawData=Array.isArray(json.data)?json.data:[];
 
-const res=await fetch(API_URL);
-const json=await res.json();
-const rawData=Array.isArray(json.data)?json.data:[];
+  windowData=rawData.map(r=>({...r, Date:formatDate(r.Date)}));
+  headers=Object.keys(windowData[0]||{});
 
-windowData=rawData.map(r=>({
-...r,
-Date:formatDate(r.Date)
-}));
-
-headers=Object.keys(windowData[0]||{});
-
-document.getElementById("dataVersion").textContent=
-`${json.fileVersion||"?"} | API ${json.apiVersion||"?"}`;
-
+  document.getElementById("dataVersion").textContent=
+    `${json.fileVersion||"?"} | API ${json.apiVersion||"?"}`;
 }
 
 /* DATE FORMAT */
-
 function formatDate(iso){
-
-if(!iso) return "";
-
-const d=new Date(iso);
-
-return `${d.getMonth()+1}/${d.getDate()}/${String(d.getFullYear()).slice(-2)}`;
-
+  if(!iso) return "";
+  const d=new Date(iso);
+  return `${d.getMonth()+1}/${d.getDate()}/${String(d.getFullYear()).slice(-2)}`;
 }
 
 /* STATUS HELPERS */
-
-function isAndrewDone(val){
-
-return ["completed","submitted"].includes(String(val||"").toLowerCase());
-
-}
-
-function isCanvasComplete(val){
-
-return typeof val==="string" && val.trim().startsWith("[");
-
-}
-
+function isAndrewDone(val){ return ["completed","submitted"].includes(String(val||"").toLowerCase()); }
+function isCanvasComplete(val){ return typeof val==="string" && val.trim().startsWith("["); }
 function isGroupPastDue(dateString){
-
-const today=new Date();
-today.setHours(0,0,0,0);
-
-const [m,d,y]=dateString.split("/");
-const groupDate=new Date("20"+y,m-1,d);
-
-return groupDate<today;
-
+  const today=new Date(); today.setHours(0,0,0,0);
+  const [m,d,y]=dateString.split("/"); 
+  const groupDate=new Date("20"+y,m-1,d);
+  return groupDate<today;
 }
-
 function isRowPastDue(row){
-
-const today=new Date();
-today.setHours(0,0,0,0);
-
-const rowDate=new Date(row.Date);
-
-const canvasComplete=isCanvasComplete(row["Canvas"]);
-const verifiedVal=String(row["Verified"]);
-
-return rowDate<today &&
-(!isAndrewDone(row["Andrew"]) || !canvasComplete || verifiedVal!=="true");
-
+  const today=new Date(); today.setHours(0,0,0,0);
+  const rowDate=new Date(row.Date);
+  const canvasComplete=isCanvasComplete(row["Canvas"]);
+  const verifiedVal=String(row["Verified"]);
+  return rowDate<today && (!isAndrewDone(row["Andrew"]) || !canvasComplete || verifiedVal!=="true");
 }
 
-/* STATUS RANK */
-
+/* STATUS RANK & CLASS */
 function getRowStatusRank(row){
-
-const andrew=String(row["Andrew"]||"").toLowerCase();
-const canvasComplete=isCanvasComplete(row["Canvas"]);
-const verified=String(row["Verified"])==="true";
-
-if(verified) return 5;
-if(andrew==="submitted" && canvasComplete) return 4;
-if(andrew==="completed") return 3;
-if(andrew==="following up") return 2;
-
-return 1;
-
+  const andrew=String(row["Andrew"]||"").toLowerCase();
+  const canvasComplete=isCanvasComplete(row["Canvas"]);
+  const verified=String(row["Verified"])==="true";
+  if(verified) return 5;
+  if(andrew==="submitted" && canvasComplete) return 4;
+  if(andrew==="completed") return 3;
+  if(andrew==="following up") return 2;
+  return 1;
 }
-
 function getRowStatusClass(row){
-
-const andrew=String(row["Andrew"]||"").toLowerCase();
-const rank=getRowStatusRank(row);
-
-if(rank===5) return "status-verified";
-if(rank===4) return "status-submitted";
-if(rank===3) return "status-completed";
-if(andrew==="following up") return "status-followingup";
-
-return "";
-
+  const andrew=String(row["Andrew"]||"").toLowerCase();
+  const rank=getRowStatusRank(row);
+  if(rank===5) return "status-verified";
+  if(rank===4) return "status-submitted";
+  if(rank===3) return "status-completed";
+  if(andrew==="following up") return "status-followingup";
+  return "";
 }
-
 function getGroupClass(rows){
-
-let lowest=5;
-
-rows.forEach(r=>{
-const rank=getRowStatusRank(r);
-if(rank<lowest) lowest=rank;
-});
-
-if(lowest===5) return "group-verified";
-if(lowest===4) return "group-submitted";
-if(lowest===3) return "group-completed";
-if(lowest===2) return "group-followingup";
-
-return "group-notstarted";
-
+  let lowest=5;
+  rows.forEach(r=>{ const rank=getRowStatusRank(r); if(rank<lowest) lowest=rank; });
+  if(lowest===5) return "group-verified";
+  if(lowest===4) return "group-submitted";
+  if(lowest===3) return "group-completed";
+  if(lowest===2) return "group-followingup";
+  return "group-notstarted";
 }
 
 /* SUMMARY */
-
 function aggregateCounts(data){
-
-const today=new Date();
-today.setHours(0,0,0,0);
-
-const counts={andrew:0,canvas:0,verified:0};
-
-data.forEach(r=>{
-
-const rowDate=new Date(r.Date);
-
-if(rowDate<today){
-
-if(!isAndrewDone(r["Andrew"])) counts.andrew++;
-if(!isCanvasComplete(r["Canvas"])) counts.canvas++;
-if(String(r["Verified"])!=="true") counts.verified++;
-
+  const today=new Date(); today.setHours(0,0,0,0);
+  const counts={andrew:0,canvas:0,verified:0};
+  data.forEach(r=>{
+    const rowDate=new Date(r.Date);
+    if(rowDate<today){
+      if(!isAndrewDone(r["Andrew"])) counts.andrew++;
+      if(!isCanvasComplete(r["Canvas"])) counts.canvas++;
+      if(String(r["Verified"])!=="true") counts.verified++;
+    }
+  });
+  return counts;
 }
-
-});
-
-return counts;
-
-}
-
-/* UPDATE SUMMARY */
-
 function updateSummary(){
-
-const counts=aggregateCounts(windowData);
-
-const summary=document.querySelector(".summary");
-
-if(!summary) return;
-
-summary.innerHTML=`
-<h2>Past Due Status</h2>
-<ul>
-<li>Andrew Missing: ${counts.andrew}</li>
-<li>Canvas Missing: ${counts.canvas}</li>
-<li>Verified Missing: ${counts.verified}</li>
-</ul>
-`;
-
+  const counts=aggregateCounts(windowData);
+  const summary=document.querySelector(".summary");
+  if(!summary) return;
+  summary.innerHTML=`
+    <h2>Past Due Status</h2>
+    <ul>
+      <li>Andrew Missing: ${counts.andrew}</li>
+      <li>Canvas Missing: ${counts.canvas}</li>
+      <li>Verified Missing: ${counts.verified}</li>
+    </ul>`;
 }
 
 /* SAVE */
-
 function triggerSave(row,rowIndex){
-
-document.getElementById("saveStatus").textContent="Saving...";
-
-fetch(API_URL,{
-method:"POST",
-body:JSON.stringify(row)
-})
-.then(()=>{
-
-document.getElementById("saveStatus").textContent="Saved ✓";
-
-refreshRowUI(rowIndex);
-
-setTimeout(()=>document.getElementById("saveStatus").textContent="",2000);
-
-})
-.catch(()=>{
-
-document.getElementById("saveStatus").textContent="Save Failed ❌";
-
-});
-
+  document.getElementById("saveStatus").textContent="Saving...";
+  fetch(API_URL,{ method:"POST", body:JSON.stringify(row) })
+    .then(()=>{
+      document.getElementById("saveStatus").textContent="Saved ✓";
+      refreshRowUI(rowIndex);
+      setTimeout(()=>document.getElementById("saveStatus").textContent="",2000);
+    })
+    .catch(()=>{ document.getElementById("saveStatus").textContent="Save Failed ❌"; });
 }
 
 /* ROW UI REFRESH */
-
 function refreshRowUI(rowIndex){
-
-const row=windowData[rowIndex];
-const rows=document.querySelectorAll("tbody tr");
-
-const tr=rows[rowIndex];
-if(!tr) return;
-
-tr.classList.remove(
-"status-followingup",
-"status-completed",
-"status-submitted",
-"status-verified"
-);
-
-tr.classList.add(getRowStatusClass(row));
-
-tr.classList.toggle("past-due",isRowPastDue(row));
-
-const groupDiv=tr.closest(".desktop-view");
-
-if(groupDiv){
-
-const date=row.Date;
-const groupRows=windowData.filter(r=>r.Date===date);
-
-groupDiv.classList.remove(
-"group-notstarted",
-"group-followingup",
-"group-completed",
-"group-submitted",
-"group-verified"
-);
-
-if(isGroupPastDue(date)){
-
-groupDiv.classList.add(getGroupClass(groupRows));
-
-}
-
-}
-
-updateSummary();
-
+  const row=windowData[rowIndex];
+  const rows=document.querySelectorAll("tbody tr");
+  const tr=rows[rowIndex];
+  if(!tr) return;
+  tr.classList.remove("status-followingup","status-completed","status-submitted","status-verified");
+  tr.classList.add(getRowStatusClass(row));
+  tr.classList.toggle("past-due",isRowPastDue(row));
+  const groupDiv=tr.closest(".desktop-view");
+  if(groupDiv){
+    const date=row.Date;
+    const groupRows=windowData.filter(r=>r.Date===date);
+    groupDiv.classList.remove("group-notstarted","group-followingup","group-completed","group-submitted","group-verified");
+    if(isGroupPastDue(date)){
+      groupDiv.classList.add(getGroupClass(groupRows));
+    }
+  }
+  updateSummary();
 }
 
 /* GROUP BY DATE */
-
 function groupByDate(data){
-
-const groups={};
-
-data.forEach(r=>{
-if(!groups[r.Date]) groups[r.Date]=[];
-groups[r.Date].push(r);
-});
-
-return groups;
-
+  const groups={};
+  data.forEach(r=>{ if(!groups[r.Date]) groups[r.Date]=[]; groups[r.Date].push(r); });
+  return groups;
 }
 
-/* SUMMARY RENDER */
-
+/* RENDER */
 function renderSummary(){
-
-const container=document.getElementById("content");
-
-const counts=aggregateCounts(windowData);
-
-const div=document.createElement("div");
-
-div.className="summary";
-
-div.innerHTML=`
-<h2>Past Due Status</h2>
-<ul>
-<li>Andrew Missing: ${counts.andrew}</li>
-<li>Canvas Missing: ${counts.canvas}</li>
-<li>Verified Missing: ${counts.verified}</li>
-</ul>
-`;
-
-container.appendChild(div);
-
+  const container=document.getElementById("content");
+  const counts=aggregateCounts(windowData);
+  const div=document.createElement("div");
+  div.className="summary";
+  div.innerHTML=`
+    <h2>Past Due Status</h2>
+    <ul>
+      <li>Andrew Missing: ${counts.andrew}</li>
+      <li>Canvas Missing: ${counts.canvas}</li>
+      <li>Verified Missing: ${counts.verified}</li>
+    </ul>`;
+  container.appendChild(div);
 }
-
-/* TABLE RENDER */
 
 function renderTable(){
+  const container=document.getElementById("content");
+  container.innerHTML="";
+  renderSummary();
+  const groups=groupByDate(windowData);
+  let globalIndex=0;
 
-const container=document.getElementById("content");
-
-container.innerHTML="";
-
-renderSummary();
-
-const groups=groupByDate(windowData);
-
-let globalIndex=0;
-
-Object.keys(groups)
-.sort((a,b)=>{
-
-const [am,ad,ay]=a.split("/");
-const [bm,bd,by]=b.split("/");
-
-return new Date(ay,am-1,ad)-new Date(by,bm-1,bd);
-
-})
-.forEach(date=>{
-
-const rows=groups[date];
-
-const groupClass=isGroupPastDue(date)?getGroupClass(rows):"";
-
-const desktopDiv=document.createElement("div");
-
-desktopDiv.className="desktop-view "+groupClass;
-
-const tableWrapper=document.createElement("div");
-tableWrapper.className="table-wrapper";
-
-const table=document.createElement("table");
-
-table.innerHTML="<tr>"+headers.filter(h=>h!=='Event').map(h=>`<th>${h}</th>`).join("")+"</tr>";
-
-rows.forEach(row=>{
-
-const statusClass=getRowStatusClass(row);
-
-let rowHTML=`<tr class="${statusClass} ${isRowPastDue(row)?'past-due':''}">`;
-
-headers.forEach(h=>{
-
-if(h==="Event") return;
-
-if(h==="Andrew"){
-
-let current=row[h]||"";
-
-rowHTML+=`<td>
-<select onchange="updateAndrew(${globalIndex},this.value)">
-<option value=""></option>
-<option ${current==="In Progress"?"selected":""}>In Progress</option>
-<option ${current==="Following Up"?"selected":""}>Following Up</option>
-<option ${current==="Completed"?"selected":""}>Completed</option>
-<option ${current==="Submitted"?"selected":""}>Submitted</option>
-</select>
-</td>`;
-
-}
-
-else if(h==="Canvas"){
-
-rowHTML+=`<td>${row[h]||""}</td>`;
-
-}
-
-else if(h==="Verified"){
-
-const checked=String(row[h])==="true";
-
-rowHTML+=`<td>
-<input type="checkbox" ${checked?"checked":""}
-onchange="updateCheckbox(${globalIndex},'Verified',this.checked)">
-</td>`;
-
-}
-
-else{
-
-rowHTML+=`<td>${row[h]}</td>`;
-
-}
-
-});
-
-rowHTML+="</tr>";
-
-table.innerHTML+=rowHTML;
-
-globalIndex++;
-
-});
-
-desktopDiv.innerHTML=`<h2>${date}</h2>`;
-
-tableWrapper.appendChild(table);
-desktopDiv.appendChild(tableWrapper);
-container.appendChild(desktopDiv);
-
-});
-
+  Object.keys(groups).sort((a,b)=>{
+    const [am,ad,ay]=a.split("/");
+    const [bm,bd,by]=b.split("/");
+    return new Date(ay,am-1,ad)-new Date(by,bm-1,bd);
+  }).forEach(date=>{
+    const rows=groups[date];
+    const groupClass=isGroupPastDue(date)?getGroupClass(rows):"";
+    const desktopDiv=document.createElement("div");
+    desktopDiv.className="desktop-view "+groupClass;
+    const tableWrapper=document.createElement("div");
+    tableWrapper.className="table-wrapper";
+    const table=document.createElement("table");
+    table.innerHTML="<tr>"+headers.filter(h=>h!=='Event').map(h=>`<th>${h}</th>`).join("")+"</tr>";
+    rows.forEach(row=>{
+      const statusClass=getRowStatusClass(row);
+      let rowHTML=`<tr class="${statusClass} ${isRowPastDue(row)?'past-due':''}">`;
+      headers.forEach(h=>{
+        if(h==="Event") return;
+        if(h==="Andrew"){
+          let current=row[h]||"";
+          rowHTML+=`<td>
+            <select onchange="updateAndrew(${globalIndex},this.value)">
+              <option value=""></option>
+              <option ${current==="In Progress"?"selected":""}>In Progress</option>
+              <option ${current==="Following Up"?"selected":""}>Following Up</option>
+              <option ${current==="Completed"?"selected":""}>Completed</option>
+              <option ${current==="Submitted"?"selected":""}>Submitted</option>
+            </select>
+          </td>`;
+        } else if(h==="Canvas"){
+          rowHTML+=`<td>${row[h]||""}</td>`;
+        } else if(h==="Verified"){
+          const checked=String(row[h])==="true";
+          rowHTML+=`<td><input type="checkbox" ${checked?"checked":""} onchange="updateCheckbox(${globalIndex},'Verified',this.checked)"></td>`;
+        } else{
+          rowHTML+=`<td>${row[h]}</td>`;
+        }
+      });
+      rowHTML+="</tr>";
+      table.innerHTML+=rowHTML;
+      globalIndex++;
+    });
+    desktopDiv.innerHTML=`<h2>${date}</h2>`;
+    tableWrapper.appendChild(table);
+    desktopDiv.appendChild(tableWrapper);
+    container.appendChild(desktopDiv);
+  });
 }
 
 /* UPDATE FUNCTIONS */
-
 function updateAndrew(rowIndex,value){
-
-windowData[rowIndex]["Andrew"]=value;
-
-triggerSave(windowData[rowIndex],rowIndex);
-
+  windowData[rowIndex]["Andrew"]=value;
+  triggerSave(windowData[rowIndex],rowIndex);
 }
-
 function updateCheckbox(rowIndex,col,value){
-
-windowData[rowIndex][col]=value?"true":"false";
-
-triggerSave(windowData[rowIndex],rowIndex);
-
+  windowData[rowIndex][col]=value?"true":"false";
+  triggerSave(windowData[rowIndex],rowIndex);
 }
 
 /* INIT */
-
 (async function(){
-
-await loadData();
-
-renderTable();
-
+  await loadData();
+  renderTable();
 })();
-
 </script>
 
 </body>
