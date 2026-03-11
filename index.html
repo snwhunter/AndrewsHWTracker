@@ -57,6 +57,7 @@ cursor:pointer;
 
 select{ padding:4px; border-radius:6px; }
 input[type="checkbox"]{ width:20px;height:20px;}
+.notes-input{ width:100%; box-sizing:border-box; }
 
 @media (max-width:768px){
 .desktop-view{display:none;}
@@ -104,6 +105,14 @@ function formatDate(iso){
 if(!iso) return "";
 const d=new Date(iso);
 return `${d.getMonth()+1}/${d.getDate()}/${String(d.getFullYear()).slice(-2)}`;
+}
+
+function escapeAttr(v){
+return String(v||"")
+.replace(/&/g,"&amp;")
+.replace(/"/g,"&quot;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;");
 }
 
 /* STATUS */
@@ -233,7 +242,12 @@ tableRows+=`
 <td>${row.Date}</td>
 <td>${row.Class||""}</td>
 <td>${row.Assignment||""}</td>
-<td>${row.Notes||""}</td>
+<td>
+<input
+class="notes-input"
+value="${escapeAttr(row.Notes)}"
+onchange="updateNotes('${row.UID}',this.value)">
+</td>
 
 <td>
 <select onchange="updateAndrew('${row.UID}',this.value)">
@@ -291,7 +305,13 @@ ${String(row.Verified)==="true"?"checked":""}
 onchange="updateCheckbox('${row.UID}','Verified',this.checked)">
 </div>
 
-<div>Notes: ${row.Notes||""}</div>
+<div style="margin-top:6px">
+<b>Notes:</b>
+<input
+class="notes-input"
+value="${escapeAttr(row.Notes)}"
+onchange="updateNotes('${row.UID}',this.value)">
+</div>
 
 </div>
 `;
@@ -385,6 +405,19 @@ const row=windowData.find(r=>r.UID===uid);
 if(!row) return;
 
 row[col]=val?"true":"false";
+
+triggerSave(row);
+
+render();
+
+}
+
+function updateNotes(uid,value){
+
+const row=windowData.find(r=>r.UID===uid);
+if(!row) return;
+
+row.Notes=value;
 
 triggerSave(row);
 
