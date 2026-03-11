@@ -130,7 +130,7 @@ async function loadData(){
 
   // update version label
   document.getElementById("versionLabel").textContent=
-    `Dashboard: v4.8.7 | File: ${json.fileVersion||"?"} | API: ${json.apiVersion||"?"}`;
+    `Dashboard: v4.8.8 | File: ${json.fileVersion||"?"} | API: ${json.apiVersion||"?"}`;
 }
 
 /* DATE FORMAT */
@@ -208,7 +208,7 @@ function updateSummary(){
 
 /* SAVE & UPDATE ROW */
 function triggerSave(rowData,rowIndex){
-  document.getElementById("saveStatus").textContent="Saving[" + rowIndex + "] " + rowData;
+  document.getElementById("saveStatus").textContent="Saving[" + rowIndex + "] " + JSON.stringify(rowData);
   fetch(API_URL,{ method:"POST", body:JSON.stringify(rowData) })
     .then(()=>{
       document.getElementById("saveStatus").textContent="Saved ✓";
