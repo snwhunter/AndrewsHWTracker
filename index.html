@@ -50,7 +50,7 @@ input[type="checkbox"] { width:20px; height:20px; }
 <div id="content">Loading...</div>
 
 <script>
-const VERSION="4.9.5";
+const VERSION="4.9.6";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 let windowData=[], headers=[];
 
@@ -103,7 +103,7 @@ function renderTable(){
     const desktopDiv=document.createElement("div"); desktopDiv.className="desktop-view "+groupClass;
     const tableWrapper=document.createElement("div"); tableWrapper.className="table-wrapper";
     const table=document.createElement("table");
-    table.innerHTML="<thead><tr>"+headers.filter(h=>h!=='Event').map(h=>`<th>${h}</th>`).join("")+"</tr></thead><tbody></tbody>";
+    table.innerHTML="<thead><tr>"+headers.filter(h=>h!=='Event'&&h!=='ParsedDate').map(h=>`<th>${h}</th>`).join("")+"</tr></thead><tbody></tbody>";
     let rowsHTML="";
     rows.forEach(row=>{
       const statusClass=getRowStatusClass(row);
