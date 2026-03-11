@@ -10,7 +10,7 @@ body { font-family: Arial, sans-serif; margin:0; display:flex; flex-direction:co
 header { position:sticky; top:0; z-index:20; background:#fff; border-bottom:1px solid #ddd; }
 h1 { text-align:center; margin:0; padding:5px; }
 #header-info { display:flex; justify-content:space-between; padding:5px 10px; font-size:14px; font-weight:bold; }
-#saveStatus { text-align:center; margin:5px 0; font-weight:bold; }
+#banner { text-align:center; margin:5px 0; font-weight:bold; }
 .summary { background:#f4f6f8; padding:5px 10px; border-radius:8px; display:flex; justify-content:space-around; font-size:14px; margin-top:5px; }
 table { border-collapse:collapse; width:100%; table-layout:fixed; }
 th, td { border:1px solid #ddd; padding:8px; }
@@ -46,10 +46,11 @@ input[type="checkbox"] { width:20px; height:20px; }
 </div>
 </header>
 
-<div id="saveStatus"></div>
+<div id="banner"></div>
 <div id="content">Loading...</div>
 
 <script>
+const VERSION="4.9.4";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 let windowData=[], headers=[];
 
@@ -77,10 +78,10 @@ function updateSummary(){
 
 /* SAVE */
 function triggerSave(rowData,rowIndex){
-  document.getElementById("saveStatus").textContent=`Saving [${rowIndex}] UID:${rowData.UID}`;
+  document.getElementById("banner").textContent=`Saving [${rowIndex}] UID:${rowData.UID}`;
   fetch(API_URL,{method:"POST",body:JSON.stringify({...rowData,UID:rowData.UID})})
-  .then(()=>{ document.getElementById("saveStatus").textContent="Saved ✓"; refreshRowUI(rowIndex); setTimeout(()=>document.getElementById("saveStatus").textContent="",2000); })
-  .catch(()=>{ document.getElementById("saveStatus").textContent="Save Failed ❌"; });
+  .then(()=>{ document.getElementById("banner").textContent="Saved ✓"; refreshRowUI(rowIndex); setTimeout(()=>document.getElementById("banner").textContent="",2000); })
+  .catch(()=>{ document.getElementById("banner").textContent="Save Failed ❌"; });
 }
 function refreshRowUI(rowIndex){
   const row=windowData[rowIndex]; const rows=document.querySelectorAll("tbody tr"); const tr=rows[rowIndex]; if(!tr) return;
@@ -149,7 +150,7 @@ function useData(json, fromCache){
     return {...r, Date:formatted, ParsedDate:parseMDY(formatted), UID:String(r.UID??i)};
   });
   headers=Object.keys(windowData[0]||{});
-  document.getElementById("versionLabel").textContent=`Dashboard: v4.9.3 | File: ${json.fileVersion||"?"} | API: ${json.apiVersion||"?"}`;
+  document.getElementById("versionLabel").textContent=`Dashboard: v${VERSION}| File: ${json.fileVersion||"?"} | API: ${json.apiVersion||"?"}`;
   const lastUpdatedDiv=document.getElementById("lastUpdated");
   const now=new Date(); const timeStr=now.toLocaleDateString()+" "+now.toLocaleTimeString();
   lastUpdatedDiv.textContent=fromCache ? `Last Updated (cached): ${timeStr}` : `Last Updated (fresh): ${timeStr}`;
