@@ -135,7 +135,7 @@ async function loadData(){
 
   // update version label
   document.getElementById("versionLabel").textContent=
-    `Dashboard: v4.8.9 | File: ${json.fileVersion||"?"} | API: ${json.apiVersion||"?"}`;
+    `Dashboard: v4.8.10 | File: ${json.fileVersion||"?"} | API: ${json.apiVersion||"?"}`;
 }
 
 /* DATE FORMAT */
@@ -286,7 +286,7 @@ function renderTable(){
         if(h==="Andrew"){
           let current=row[h]||"";
           rowHTML+=`<td>
-            <select onchange="updateAndrew(${globalIndex},this.value)">
+            <select onchange="updateAndrew('${row.UID}',this.value)">
               <option value=""></option>
               <option ${current==="In Progress"?"selected":""}>In Progress</option>
               <option ${current==="Following Up"?"selected":""}>Following Up</option>
@@ -298,7 +298,7 @@ function renderTable(){
           rowHTML+=`<td>${row[h]||""}</td>`;
         } else if(h==="Verified"){
           const checked=String(row[h])==="true";
-          rowHTML+=`<td><input type="checkbox" ${checked?"checked":""} onchange="updateCheckbox(${globalIndex},'Verified',this.checked)"></td>`;
+          rowHTML+=`<td><input type="checkbox" ${checked?"checked":""} onchange="updateCheckbox(${row.UID},'Verified',this.checked)"></td>`;
         } else{
           rowHTML+=`<td>${row[h]}</td>`;
         }
