@@ -125,12 +125,17 @@ async function loadData(){
   const json=await res.json();
   const rawData=Array.isArray(json.data)?json.data:[];
 
-  windowData=rawData.map(r=>({...r, Date:formatDate(r.Date)}));
+  //windowData=rawData.map(r=>({...r, Date:formatDate(r.Date)}));
+  windowData = rawData.map((r, i) => ({
+    ...r,
+    Date: formatDate(r.Date),
+    UID: r.UID || i  // fallback to index if UID missing
+  }));
   headers=Object.keys(windowData[0]||{});
 
   // update version label
   document.getElementById("versionLabel").textContent=
-    `Dashboard: v4.8.8 | File: ${json.fileVersion||"?"} | API: ${json.apiVersion||"?"}`;
+    `Dashboard: v4.8.9 | File: ${json.fileVersion||"?"} | API: ${json.apiVersion||"?"}`;
 }
 
 /* DATE FORMAT */
@@ -208,14 +213,23 @@ function updateSummary(){
 
 /* SAVE & UPDATE ROW */
 function triggerSave(rowData,rowIndex){
-  document.getElementById("saveStatus").textContent="Saving[" + rowIndex + "] " + JSON.stringify(rowData);
-  fetch(API_URL,{ method:"POST", body:JSON.stringify(rowData) })
-    .then(()=>{
-      document.getElementById("saveStatus").textContent="Saved ✓";
-      refreshRowUI(rowIndex);
-      setTimeout(()=>document.getElementById("saveStatus").textContent="",2000);
-    })
-    .catch(()=>{ document.getElementById("saveStatus").textContent="Save Failed ❌"; });
+  document.getElementById("saveStatus").textContent="Saving[" + rowIndex + "] " + row.UID;
+  const payload = {
+    ...row,
+    UID: row.UID // ensure correct ID sent
+  };
+  fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  })
+  .then(()=> {
+    document.getElementById("saveStatus").textContent="Saved ✓";
+    refreshRowUI(rowIndex);
+    setTimeout(()=>document.getElementById("saveStatus").textContent="",2000);
+  })
+  .catch(()=>{
+    document.getElementById("saveStatus").textContent="Save Failed ❌";
+  });
 }
 function refreshRowUI(rowIndex){
   const row=windowData[rowIndex];
@@ -301,13 +315,25 @@ function renderTable(){
 }
 
 /* UPDATE FUNCTIONS */
-function updateAndrew(rowIndex,value){
+/*function updateAndrew(rowIndex,value){
   windowData[rowIndex]["Andrew"]=value;
   triggerSave(windowData[rowIndex],rowIndex);
+}*/
+function updateAndrew(uid, value){
+  const rowIndex = windowData.findIndex(r => r.UID === uid);
+  if(rowIndex === -1) return;
+  windowData[rowIndex]["Andrew"] = value;
+  triggerSave(windowData[rowIndex], rowIndex);
 }
-function updateCheckbox(rowIndex,col,value){
+/*function updateCheckbox(rowIndex,col,value){
   windowData[rowIndex][col]=value?"true":"false";
   triggerSave(windowData[rowIndex],rowIndex);
+}*/
+function updateCheckbox(uid, col, value){
+  const rowIndex = windowData.findIndex(r => r.UID === uid);
+  if(rowIndex === -1) return;
+  windowData[rowIndex][col]=value?"true":"false";
+  triggerSave(windowData[rowIndex], rowIndex);
 }
 
 /* INIT */
