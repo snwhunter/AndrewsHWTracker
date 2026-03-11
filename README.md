@@ -1,11 +1,5 @@
 //Todos
-- Update name to Andrews's
-- Cols all uniform widths
 - Add views:
     - Andrew
     - Andrew One-Day
     - Teacher
-- Different color for Andrew's status
-- Auto update canvas col from python side
-- Auto merge from Cal read
-- Fix token issue
