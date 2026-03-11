@@ -103,7 +103,7 @@ UID:String(r.UID ?? i)
 headers=Object.keys(windowData[0]||{});
 
 document.getElementById("versionLabel").textContent=
-`Dashboard: v4.8.11 | File: ${json.fileVersion||"?"} | API: ${json.apiVersion||"?"}`;
+`Dashboard: v4.8.12 | File: ${json.fileVersion||"?"} | API: ${json.apiVersion||"?"}`;
 
 }
 
@@ -188,6 +188,8 @@ function getRowStatusClass(row){
 const andrew=String(row["Andrew"]||"").toLowerCase();
 
 const rank=getRowStatusRank(row);
+
+console.log("UID:", row.UID, "Rank:", status);
 
 if(rank===5) return "status-verified";
 
