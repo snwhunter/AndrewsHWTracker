@@ -50,7 +50,7 @@ input[type="checkbox"] { width:20px; height:20px; }
 <div id="content">Loading...</div>
 
 <script>
-const VERSION="4.9.4";
+const VERSION="4.9.5";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 let windowData=[], headers=[];
 
@@ -109,7 +109,7 @@ function renderTable(){
       const statusClass=getRowStatusClass(row);
       let rowHTML=`<tr class="${statusClass} ${isRowPastDue(row)?'past-due':''}">`;
       headers.forEach(h=>{
-        if(h==="Event") return;
+        if(h==="Event"||h==="ParsedDate") return;
         else if(h==="Andrew"){
           const current=row[h]||"";
           rowHTML+=`<td><select onchange="updateAndrew('${row.UID}',this.value)"><option value=""></option><option ${current==="In Progress"?"selected":""}>In Progress</option><option ${current==="Following Up"?"selected":""}>Following Up</option><option ${current==="Completed"?"selected":""}>Completed</option><option ${current==="Submitted"?"selected":""}>Submitted</option></select></td>`;
