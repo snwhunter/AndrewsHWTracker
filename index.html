@@ -87,6 +87,12 @@ input[type="checkbox"]{ width:20px;height:20px;}
 <select id="classFilter" onchange="applyClassFilter(this.value)">
 <option value="">All Classes</option>
 </select>
+
+<label for="hideVerifiedToggle"><b>Hide Verified</b></label>
+<input
+type="checkbox"
+id="hideVerifiedToggle"
+onchange="applyHideVerified(this.checked)">
 </div>
 </header>
 
@@ -95,13 +101,14 @@ input[type="checkbox"]{ width:20px;height:20px;}
 
 <script>
 
-const VERSION="5.2.2";
+const VERSION="5.2.3";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 let allData=[];
 let windowData=[];
 let headers=[];
 let activeClassFilter="";
+let hideVerifiedRows=false;
 
 /* DATE PARSER */
 
@@ -195,7 +202,7 @@ function updateSummary(){
 const counts={andrew:0,canvas:0,verified:0};
 const today=new Date(); today.setHours(0,0,0,0);
 
-windowData.forEach(r=>{
+getVisibleData().forEach(r=>{
 if(r.ParsedDate<today){
 if(!isAndrewDone(r.Andrew)) counts.andrew++;
 if(!isCanvasComplete(r.Canvas)) counts.canvas++;
@@ -232,6 +239,16 @@ render();
 
 /* GROUP */
 
+function applyHideVerified(checked){
+hideVerifiedRows=checked;
+render();
+}
+
+function getVisibleData(){
+if(!hideVerifiedRows) return windowData;
+return windowData.filter(r=>String(r.Verified)!=="true");
+}
+
 function groupByDate(data){
 const g={};
 data.forEach(r=>{
@@ -247,7 +264,7 @@ function render(){
 
 const container=document.getElementById("content");
 
-const groups=groupByDate(windowData);
+const groups=groupByDate(getVisibleData());
 
 let html="";
 
