@@ -58,7 +58,7 @@ cursor:pointer;
 
 select{ padding:4px; border-radius:6px; }
 input[type="checkbox"]{ width:20px;height:20px;}
-.notes-input{ width:100%; box-sizing:border-box; resize:vertical; min-height:64px; font-family:inherit; }
+.notes-input{ width:100%; box-sizing:border-box; resize:vertical; min-height:50px; font-family:inherit; }
 
 @media (max-width:768px){
 .desktop-view{display:none;}
@@ -95,7 +95,7 @@ input[type="checkbox"]{ width:20px;height:20px;}
 
 <script>
 
-const VERSION="5.2.0";
+const VERSION="5.2.1";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 let allData=[];
@@ -275,7 +275,7 @@ tableRows+=`
 <td>
 <textarea
 class="notes-input"
-rows="3"
+rows="2"
 onchange="updateNotes('${row.UID}',this.value)">${escapeAttr(row.Notes)}</textarea>
 </td>
 
