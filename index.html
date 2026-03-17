@@ -101,7 +101,7 @@ onchange="applyHideVerified(this.checked)">
 
 <script>
 
-const VERSION="5.2.3";
+const VERSION="5.2.4";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 let allData=[];
@@ -136,6 +136,14 @@ return String(v||"")
 
 function isAndrewDone(v){
 return ["completed","submitted"].includes(String(v||"").toLowerCase());
+}
+
+function isAndrewFollowingUp(v){
+return String(v||"").toLowerCase()==="following up";
+}
+
+function isAndrewMissing(v){
+return !isAndrewDone(v) && !isAndrewFollowingUp(v);
 }
 
 function isCanvasComplete(v){
@@ -200,21 +208,24 @@ return "group-notstarted";
 
 function updateSummary(){
 
-const counts={andrew:0,canvas:0,verified:0};
+const counts={andrewMissing:0,andrewFollowingUp:0,canvas:0,verified:0,total:0};
 const today=new Date(); today.setHours(0,0,0,0);
 
 getVisibleData().forEach(r=>{
 if(r.ParsedDate<today){
-if(!isAndrewDone(r.Andrew)) counts.andrew++;
+counts.total++;
+if(isAndrewMissing(r.Andrew)) counts.andrewMissing++;
+if(isAndrewFollowingUp(r.Andrew)) counts.andrewFollowingUp++;
 if(!isCanvasComplete(r.Canvas)) counts.canvas++;
 if(String(r.Verified)!=="true") counts.verified++;
 }
 });
 
 document.querySelector(".summary").innerHTML=
-`Andrew Missing: ${counts.andrew} |
-Canvas Missing: ${counts.canvas} |
-Verified Missing: ${counts.verified}`;
+`Andrew Missing: ${counts.andrewMissing} (out of ${counts.total}) |
+Andrew Following Up: ${counts.andrewFollowingUp} (out of ${counts.total}) |
+Canvas: ${counts.canvas} (out of ${counts.total}) |
+Verified: ${counts.verified} (out of ${counts.total})`;
 
 }
 
