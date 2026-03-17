@@ -105,7 +105,7 @@ onchange="applyHideVerified(this.checked)">
 
 <script>
 
-const VERSION="5.3.0";
+const VERSION="5.4.0";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 let allData=[];
@@ -238,6 +238,11 @@ const classNames=Object.keys(classCounts).sort((a,b)=>a.localeCompare(b));
 
 let totals={andrewMissing:0,andrewFollowingUp:0,canvas:0,verified:0,total:0};
 
+function formatSummaryCell(count,total){
+const percent=total?Math.round((count/total)*100):0;
+return `${percent}% (${count} out of ${total})`;
+}
+
 const rowsHtml=classNames.map(className=>{
 const c=classCounts[className];
 
@@ -250,10 +255,10 @@ totals.total+=c.total;
 return `
 <tr>
 <td>${className}</td>
-<td>${c.andrewMissing} (out of ${c.total})</td>
-<td>${c.andrewFollowingUp} (out of ${c.total})</td>
-<td>${c.canvas} (out of ${c.total})</td>
-<td>${c.verified} (out of ${c.total})</td>
+<td>${formatSummaryCell(c.andrewMissing,c.total)}</td>
+<td>${formatSummaryCell(c.andrewFollowingUp,c.total)}</td>
+<td>${formatSummaryCell(c.canvas,c.total)}</td>
+<td>${formatSummaryCell(c.verified,c.total)}</td>
 </tr>`;
 }).join("");
 
@@ -269,14 +274,14 @@ const summaryHtml=`
 </tr>
 </thead>
 <tbody>
-${rowsHtml}
 <tr class="summary-total-row">
 <td>All Classes Total</td>
-<td>${totals.andrewMissing} (out of ${totals.total})</td>
-<td>${totals.andrewFollowingUp} (out of ${totals.total})</td>
-<td>${totals.canvas} (out of ${totals.total})</td>
-<td>${totals.verified} (out of ${totals.total})</td>
+<td>${formatSummaryCell(totals.andrewMissing,totals.total)}</td>
+<td>${formatSummaryCell(totals.andrewFollowingUp,totals.total)}</td>
+<td>${formatSummaryCell(totals.canvas,totals.total)}</td>
+<td>${formatSummaryCell(totals.verified,totals.total)}</td>
 </tr>
+${rowsHtml}
 </tbody>
 </table>`;
 
