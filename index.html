@@ -139,7 +139,8 @@ return ["completed","submitted"].includes(String(v||"").toLowerCase());
 }
 
 function isCanvasComplete(v){
-return typeof v==="string" && v.trim().startsWith("[");
+const value=String(v||"").toLowerCase();
+return value.trim().startsWith("[") || value.includes("submitted");
 }
 
 function isGroupPastDue(d){
