@@ -105,7 +105,7 @@ onchange="applyHideVerified(this.checked)">
 
 <script>
 
-const VERSION="5.4.0";
+const VERSION="5.4.1";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 let allData=[];
@@ -222,21 +222,25 @@ if(!(r.ParsedDate<=today)) return;
 const className=String(r.Class||"Unassigned").trim()||"Unassigned";
 
 if(!classCounts[className]){
-classCounts[className]={andrewMissing:0,andrewFollowingUp:0,canvas:0,verified:0,total:0};
+classCounts[className]={andrewMissing:0,andrewFollowingUp:0,canvas:0,verified:0,total:0,actionableTotal:0};
 }
 
 const counts=classCounts[className];
+const isVerified=String(r.Verified)==="true";
 counts.total++;
 
+if(!isVerified){
+counts.actionableTotal++;
 if(isAndrewMissing(r.Andrew)) counts.andrewMissing++;
 if(isAndrewFollowingUp(r.Andrew)) counts.andrewFollowingUp++;
 if(!isCanvasComplete(r.Canvas)) counts.canvas++;
-if(String(r.Verified)!=="true") counts.verified++;
+counts.verified++;
+}
 });
 
 const classNames=Object.keys(classCounts).sort((a,b)=>a.localeCompare(b));
 
-let totals={andrewMissing:0,andrewFollowingUp:0,canvas:0,verified:0,total:0};
+let totals={andrewMissing:0,andrewFollowingUp:0,canvas:0,verified:0,total:0,actionableTotal:0};
 
 function formatSummaryCell(count,total){
 const percent=total?Math.round((count/total)*100):0;
@@ -251,13 +255,14 @@ totals.andrewFollowingUp+=c.andrewFollowingUp;
 totals.canvas+=c.canvas;
 totals.verified+=c.verified;
 totals.total+=c.total;
+totals.actionableTotal+=c.actionableTotal;
 
 return `
 <tr>
 <td>${className}</td>
-<td>${formatSummaryCell(c.andrewMissing,c.total)}</td>
-<td>${formatSummaryCell(c.andrewFollowingUp,c.total)}</td>
-<td>${formatSummaryCell(c.canvas,c.total)}</td>
+<td>${formatSummaryCell(c.andrewMissing,c.actionableTotal)}</td>
+<td>${formatSummaryCell(c.andrewFollowingUp,c.actionableTotal)}</td>
+<td>${formatSummaryCell(c.canvas,c.actionableTotal)}</td>
 <td>${formatSummaryCell(c.verified,c.total)}</td>
 </tr>`;
 }).join("");
@@ -276,9 +281,9 @@ const summaryHtml=`
 <tbody>
 <tr class="summary-total-row">
 <td>All Classes Total</td>
-<td>${formatSummaryCell(totals.andrewMissing,totals.total)}</td>
-<td>${formatSummaryCell(totals.andrewFollowingUp,totals.total)}</td>
-<td>${formatSummaryCell(totals.canvas,totals.total)}</td>
+<td>${formatSummaryCell(totals.andrewMissing,totals.actionableTotal)}</td>
+<td>${formatSummaryCell(totals.andrewFollowingUp,totals.actionableTotal)}</td>
+<td>${formatSummaryCell(totals.canvas,totals.actionableTotal)}</td>
 <td>${formatSummaryCell(totals.verified,totals.total)}</td>
 </tr>
 ${rowsHtml}
