@@ -10,8 +10,9 @@ body { font-family: Arial, sans-serif; margin:0; display:flex; flex-direction:co
 header { position:sticky; top:0; z-index:20; background:#fff; border-bottom:1px solid #ddd; }
 h1 { text-align:center; margin:0; padding:5px; }
 
-#header-info { display:flex; justify-content:space-between; padding:5px 10px; font-size:14px; font-weight:bold; }
-.summary { background:#f4f6f8; padding:8px 10px; border-radius:8px; font-size:13px; margin-top:5px; overflow-x:auto; }
+#header-info { display:flex; flex-wrap:wrap; align-items:flex-start; gap:10px; padding:5px 10px; font-size:14px; font-weight:bold; }
+.header-labels { display:flex; flex-direction:column; gap:4px; min-width:190px; }
+.summary { flex:1 1 560px; background:#f4f6f8; padding:8px 10px; border-radius:8px; font-size:13px; margin-top:5px; overflow-x:auto; }
 .summary-table { border-collapse: collapse; width: 100%; min-width: 560px; }
 .summary-table th, .summary-table td { border:1px solid #cfd6dd; padding:6px 8px; text-align:center; }
 .summary-table th:first-child, .summary-table td:first-child { text-align:left; }
@@ -81,9 +82,12 @@ input[type="checkbox"]{ width:20px;height:20px;}
 <h1>Andrew's HW Dashboard</h1>
 
 <div id="header-info">
+<div class="header-labels">
 <div id="versionLabel">Dashboard: ? | API: ?</div>
-<div class="summary"></div>
+<div id="totalRowsLabel">Total Rows: ?</div>
 <div id="lastUpdated"></div>
+</div>
+<div class="summary"></div>
 </div>
 
 <div class="filter-bar">
@@ -105,7 +109,7 @@ onchange="applyHideVerified(this.checked)">
 
 <script>
 
-const VERSION="5.4.0";
+const VERSION="5.4.1";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 let allData=[];
@@ -215,28 +219,35 @@ function updateSummary(){
 const today=new Date(); today.setHours(0,0,0,0);
 
 const classCounts={};
+const summaryRows=windowData.filter(r=>r.ParsedDate && r.ParsedDate<=today);
 
-getVisibleData().forEach(r=>{
-if(!(r.ParsedDate<=today)) return;
-
+summaryRows.forEach(r=>{
 const className=String(r.Class||"Unassigned").trim()||"Unassigned";
 
 if(!classCounts[className]){
-classCounts[className]={andrewMissing:0,andrewFollowingUp:0,canvas:0,verified:0,total:0};
+classCounts[className]={andrewMissing:0,andrewFollowingUp:0,canvas:0,verified:0,total:0,actionableTotal:0};
 }
 
 const counts=classCounts[className];
-counts.total++;
+const isVerified=String(r.Verified)==="true";
 
+counts.total++;
+if(isVerified) counts.verified++;
+
+if(isVerified) return;
+
+counts.actionableTotal++;
 if(isAndrewMissing(r.Andrew)) counts.andrewMissing++;
 if(isAndrewFollowingUp(r.Andrew)) counts.andrewFollowingUp++;
 if(!isCanvasComplete(r.Canvas)) counts.canvas++;
-if(String(r.Verified)!=="true") counts.verified++;
 });
+
+document.getElementById("totalRowsLabel").textContent=
+`Total Rows: ${summaryRows.length}`;
 
 const classNames=Object.keys(classCounts).sort((a,b)=>a.localeCompare(b));
 
-let totals={andrewMissing:0,andrewFollowingUp:0,canvas:0,verified:0,total:0};
+let totals={andrewMissing:0,andrewFollowingUp:0,canvas:0,verified:0,total:0,actionableTotal:0};
 
 function formatSummaryCell(count,total){
 const percent=total?Math.round((count/total)*100):0;
@@ -251,13 +262,14 @@ totals.andrewFollowingUp+=c.andrewFollowingUp;
 totals.canvas+=c.canvas;
 totals.verified+=c.verified;
 totals.total+=c.total;
+totals.actionableTotal+=c.actionableTotal;
 
 return `
 <tr>
 <td>${className}</td>
-<td>${formatSummaryCell(c.andrewMissing,c.total)}</td>
-<td>${formatSummaryCell(c.andrewFollowingUp,c.total)}</td>
-<td>${formatSummaryCell(c.canvas,c.total)}</td>
+<td>${formatSummaryCell(c.andrewMissing,c.actionableTotal)}</td>
+<td>${formatSummaryCell(c.andrewFollowingUp,c.actionableTotal)}</td>
+<td>${formatSummaryCell(c.canvas,c.actionableTotal)}</td>
 <td>${formatSummaryCell(c.verified,c.total)}</td>
 </tr>`;
 }).join("");
@@ -276,9 +288,9 @@ const summaryHtml=`
 <tbody>
 <tr class="summary-total-row">
 <td>All Classes Total</td>
-<td>${formatSummaryCell(totals.andrewMissing,totals.total)}</td>
-<td>${formatSummaryCell(totals.andrewFollowingUp,totals.total)}</td>
-<td>${formatSummaryCell(totals.canvas,totals.total)}</td>
+<td>${formatSummaryCell(totals.andrewMissing,totals.actionableTotal)}</td>
+<td>${formatSummaryCell(totals.andrewFollowingUp,totals.actionableTotal)}</td>
+<td>${formatSummaryCell(totals.canvas,totals.actionableTotal)}</td>
 <td>${formatSummaryCell(totals.verified,totals.total)}</td>
 </tr>
 ${rowsHtml}
