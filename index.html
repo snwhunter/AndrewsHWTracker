@@ -105,7 +105,7 @@ onchange="applyHideVerified(this.checked)">
 
 <script>
 
-const VERSION="5.4.2";
+const VERSION="5.4.3";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 let allData=[];
@@ -143,7 +143,7 @@ return ["completed","submitted"].includes(String(v||"").toLowerCase());
 }
 
 function isAndrewFollowingUp(v){
-return String(v||"").toLowerCase()==="following up";
+return String(v||"").toLowerCase()==="Following-Up";
 }
 
 function isAndrewMissing(v){
@@ -176,7 +176,7 @@ const v=String(r.Verified)==="true";
 if(v) return 5;
 if(a==="submitted" && canvas) return 4;
 if(a==="completed") return 3;
-if(a==="following up") return 2;
+if(a==="following-up") return 2;
 return 1;
 }
 
@@ -188,7 +188,7 @@ if(rank===5) return "status-verified";
 if(rank===4) return "status-submitted";
 if(rank===3) return "status-completed";
 
-if(String(r.Andrew).toLowerCase()==="following up")
+if(String(r.Andrew).toLowerCase()==="following-up")
 return "status-followingup";
 
 return "";
@@ -232,8 +232,8 @@ counts.labelTotal++;
 if(isBeforeToday) counts.summaryTotal++;
 
 if(isBeforeToday && !isVerified) counts.unverified++;
-if(isBeforeToday && !isVerified && !["submitted","following up"].includes(andrewStatus)) counts.andrewTodo++;
-if(isBeforeToday && !isVerified && andrewStatus==="following up") counts.andrewFollowingUp++;
+if(isBeforeToday && !isVerified && !["Submitted","Following-Up"].includes(andrewStatus)) counts.andrewTodo++;
+if(isBeforeToday && !isVerified && andrewStatus==="Following-Up") counts.andrewFollowingUp++;
 if(isBeforeToday && !isVerified && !isCanvasComplete(r.Canvas)) counts.canvasIncomplete++;
 });
 
@@ -378,8 +378,8 @@ onchange="updateNotes('${row.UID}',this.value)">${escapeAttr(row.Notes)}</textar
 <td>
 <select onchange="updateAndrew('${row.UID}',this.value)">
 <option></option>
-<option ${row.Andrew==="In Progress"?"selected":""}>In Progress</option>
-<option ${row.Andrew==="Following Up"?"selected":""}>Following Up</option>
+<option ${row.Andrew==="In-Progress"?"selected":""}>In-Progress</option>
+<option ${row.Andrew==="Following-Up"?"selected":""}>Following-Up</option>
 <option ${row.Andrew==="Completed"?"selected":""}>Completed</option>
 <option ${row.Andrew==="Submitted"?"selected":""}>Submitted</option>
 </select>
@@ -417,8 +417,8 @@ mobileCards+=`
 <div style="margin-top:6px">
 <select onchange="updateAndrew('${row.UID}',this.value)">
 <option></option>
-<option ${row.Andrew==="In Progress"?"selected":""}>In Progress</option>
-<option ${row.Andrew==="Following Up"?"selected":""}>Following Up</option>
+<option ${row.Andrew==="In-Progress"?"selected":""}>In-Progress</option>
+<option ${row.Andrew==="Following-Up"?"selected":""}>Following-Up</option>
 <option ${row.Andrew==="Completed"?"selected":""}>Completed</option>
 <option ${row.Andrew==="Submitted"?"selected":""}>Submitted</option>
 </select>
