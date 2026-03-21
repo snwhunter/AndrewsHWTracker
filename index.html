@@ -105,9 +105,13 @@ onchange="applyHideVerified(this.checked)">
 
 <script>
 
-const VERSION="5.4.3";
+const VERSION="5.4.4";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
+const STATUS_IN_PROGRESS="In-Progress";
+const STATUS_SUBMITTED="Submitted";
+const STATUS_FOLLOWING_UP="Following-Up";
+  
 let allData=[];
 let windowData=[];
 let headers=[];
@@ -139,11 +143,11 @@ return String(v||"")
 /* STATUS */
 
 function isAndrewDone(v){
-return ["completed","submitted"].includes(String(v||"").toLowerCase());
+return ["completed",STATUS_SUBMITTED].includes(String(v||"").toLowerCase());
 }
 
 function isAndrewFollowingUp(v){
-return String(v||"").toLowerCase()==="Following-Up";
+return String(v||"").toLowerCase()===STATUS_FOLLOWING_UP.toLowerCase();
 }
 
 function isAndrewMissing(v){
@@ -152,7 +156,7 @@ return !isAndrewDone(v) && !isAndrewFollowingUp(v);
 
 function isCanvasComplete(v){
 const value=String(v||"").toLowerCase();
-return value.trim().startsWith("[") || value.includes("submitted");
+return value.trim().startsWith("[") || value.includes(STATUS_SUBMITTED);
 }
 
 function isGroupPastDue(d){
@@ -174,9 +178,9 @@ const canvas=isCanvasComplete(r.Canvas);
 const v=String(r.Verified)==="true";
 
 if(v) return 5;
-if(a==="submitted" && canvas) return 4;
+if(a===STATUS_SUBMITTED.toLowerCase() && canvas) return 4;
 if(a==="completed") return 3;
-if(a==="following-up") return 2;
+if(a===STATUS_FOLLOWING_UP.toLowerCase()) return 2;
 return 1;
 }
 
@@ -188,7 +192,7 @@ if(rank===5) return "status-verified";
 if(rank===4) return "status-submitted";
 if(rank===3) return "status-completed";
 
-if(String(r.Andrew).toLowerCase()==="following-up")
+if(String(r.Andrew).toLowerCase()===STATUS_FOLLOWING_UP)
 return "status-followingup";
 
 return "";
@@ -232,8 +236,8 @@ counts.labelTotal++;
 if(isBeforeToday) counts.summaryTotal++;
 
 if(isBeforeToday && !isVerified) counts.unverified++;
-if(isBeforeToday && !isVerified && !["Submitted","Following-Up"].includes(andrewStatus)) counts.andrewTodo++;
-if(isBeforeToday && !isVerified && andrewStatus==="Following-Up") counts.andrewFollowingUp++;
+if(isBeforeToday && !isVerified && ![STATUS_SUBMITTED,STATUS_FOLLOWING_UP].toLowerCase().includes(andrewStatus)) counts.andrewTodo++;
+if(isBeforeToday && !isVerified && andrewStatus===STATUS_FOLLOWING_UP.toLowerCase()) counts.andrewFollowingUp++;
 if(isBeforeToday && !isVerified && !isCanvasComplete(r.Canvas)) counts.canvasIncomplete++;
 });
 
@@ -378,10 +382,10 @@ onchange="updateNotes('${row.UID}',this.value)">${escapeAttr(row.Notes)}</textar
 <td>
 <select onchange="updateAndrew('${row.UID}',this.value)">
 <option></option>
-<option ${row.Andrew==="In-Progress"?"selected":""}>In-Progress</option>
-<option ${row.Andrew==="Following-Up"?"selected":""}>Following-Up</option>
+<option ${row.Andrew===STATUS_IN_PROGRESS?"selected":""}>In-Progress</option>
+<option ${row.Andrew===STATUS_FOLLOWING_UP?"selected":""}>Following-Up</option>
 <option ${row.Andrew==="Completed"?"selected":""}>Completed</option>
-<option ${row.Andrew==="Submitted"?"selected":""}>Submitted</option>
+<option ${row.Andrew===STATUS_SUBMITTED?"selected":""}>Submitted</option>
 </select>
 </td>
 
@@ -417,10 +421,10 @@ mobileCards+=`
 <div style="margin-top:6px">
 <select onchange="updateAndrew('${row.UID}',this.value)">
 <option></option>
-<option ${row.Andrew==="In-Progress"?"selected":""}>In-Progress</option>
-<option ${row.Andrew==="Following-Up"?"selected":""}>Following-Up</option>
+<option ${row.Andrew===STATUS_IN_PROGRESS?"selected":""}>In-Progress</option>
+<option ${row.Andrew===STATUS_FOLLOWING_UP?"selected":""}>Following-Up</option>
 <option ${row.Andrew==="Completed"?"selected":""}>Completed</option>
-<option ${row.Andrew==="Submitted"?"selected":""}>Submitted</option>
+<option ${row.Andrew===STATUS_SUBMITTED?"selected":""}>Submitted</option>
 </select>
 </div>
 
