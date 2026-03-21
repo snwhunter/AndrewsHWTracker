@@ -105,7 +105,7 @@ onchange="applyHideVerified(this.checked)">
 
 <script>
 
-const VERSION="5.4.0";
+const VERSION="5.4.2";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 let allData=[];
@@ -217,26 +217,29 @@ const today=new Date(); today.setHours(0,0,0,0);
 const classCounts={};
 
 getVisibleData().forEach(r=>{
-if(!(r.ParsedDate<=today)) return;
-
 const className=String(r.Class||"Unassigned").trim()||"Unassigned";
+const isBeforeToday=Boolean(r.ParsedDate) && r.ParsedDate<today;
+const isVerified=String(r.Verified).toLowerCase()==="true";
+const andrewStatus=String(r.Andrew||"").trim().toLowerCase();
 
 if(!classCounts[className]){
-classCounts[className]={andrewMissing:0,andrewFollowingUp:0,canvas:0,verified:0,total:0};
+classCounts[className]={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0};
 }
 
 const counts=classCounts[className];
-counts.total++;
+counts.labelTotal++;
 
-if(isAndrewMissing(r.Andrew)) counts.andrewMissing++;
-if(isAndrewFollowingUp(r.Andrew)) counts.andrewFollowingUp++;
-if(!isCanvasComplete(r.Canvas)) counts.canvas++;
-if(String(r.Verified)!=="true") counts.verified++;
+if(isBeforeToday) counts.summaryTotal++;
+
+if(isBeforeToday && !isVerified) counts.unverified++;
+if(isBeforeToday && !isVerified && !["submitted","following up"].includes(andrewStatus)) counts.andrewTodo++;
+if(isBeforeToday && !isVerified && andrewStatus==="following up") counts.andrewFollowingUp++;
+if(isBeforeToday && !isVerified && !isCanvasComplete(r.Canvas)) counts.canvasIncomplete++;
 });
 
 const classNames=Object.keys(classCounts).sort((a,b)=>a.localeCompare(b));
 
-let totals={andrewMissing:0,andrewFollowingUp:0,canvas:0,verified:0,total:0};
+let totals={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0};
 
 function formatSummaryCell(count,total){
 const percent=total?Math.round((count/total)*100):0;
@@ -246,19 +249,21 @@ return `${percent}% (${count} out of ${total})`;
 const rowsHtml=classNames.map(className=>{
 const c=classCounts[className];
 
-totals.andrewMissing+=c.andrewMissing;
+totals.andrewTodo+=c.andrewTodo;
 totals.andrewFollowingUp+=c.andrewFollowingUp;
-totals.canvas+=c.canvas;
-totals.verified+=c.verified;
-totals.total+=c.total;
+totals.canvasIncomplete+=c.canvasIncomplete;
+totals.unverified+=c.unverified;
+totals.summaryTotal+=c.summaryTotal;
+totals.labelTotal+=c.labelTotal;
 
 return `
 <tr>
 <td>${className}</td>
-<td>${formatSummaryCell(c.andrewMissing,c.total)}</td>
-<td>${formatSummaryCell(c.andrewFollowingUp,c.total)}</td>
-<td>${formatSummaryCell(c.canvas,c.total)}</td>
-<td>${formatSummaryCell(c.verified,c.total)}</td>
+<td>${formatSummaryCell(c.andrewTodo,c.summaryTotal)}</td>
+<td>${formatSummaryCell(c.andrewFollowingUp,c.summaryTotal)}</td>
+<td>${formatSummaryCell(c.canvasIncomplete,c.summaryTotal)}</td>
+<td>${formatSummaryCell(c.unverified,c.summaryTotal)}</td>
+<td>${c.labelTotal}</td>
 </tr>`;
 }).join("");
 
@@ -267,21 +272,23 @@ const summaryHtml=`
 <thead>
 <tr>
 <th>Class</th>
-<th>Andrew Missing</th>
+<th>Andrew Todo</th>
 <th>Andrew Following-Up</th>
-<th>Canvas</th>
-<th>Verified</th>
+<th>Canvas Incomplete</th>
+<th>Unverified</th>
+<th>Total</th>
 </tr>
 </thead>
 <tbody>
-<tr class="summary-total-row">
-<td>All Classes Total</td>
-<td>${formatSummaryCell(totals.andrewMissing,totals.total)}</td>
-<td>${formatSummaryCell(totals.andrewFollowingUp,totals.total)}</td>
-<td>${formatSummaryCell(totals.canvas,totals.total)}</td>
-<td>${formatSummaryCell(totals.verified,totals.total)}</td>
-</tr>
 ${rowsHtml}
+<tr class="summary-total-row">
+<td>All Classes</td>
+<td>${formatSummaryCell(totals.andrewTodo,totals.summaryTotal)}</td>
+<td>${formatSummaryCell(totals.andrewFollowingUp,totals.summaryTotal)}</td>
+<td>${formatSummaryCell(totals.canvasIncomplete,totals.summaryTotal)}</td>
+<td>${formatSummaryCell(totals.unverified,totals.summaryTotal)}</td>
+<td>${totals.labelTotal}</td>
+</tr>
 </tbody>
 </table>`;
 
