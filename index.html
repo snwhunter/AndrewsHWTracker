@@ -105,7 +105,7 @@ onchange="applyHideVerified(this.checked)">
 
 <script>
 
-const VERSION="5.4.1";
+const VERSION="5.4.2";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 let allData=[];
@@ -223,7 +223,7 @@ const isVerified=String(r.Verified).toLowerCase()==="true";
 const andrewStatus=String(r.Andrew||"").trim().toLowerCase();
 
 if(!classCounts[className]){
-classCounts[className]={andrewMissing:0,andrewFollowingUp:0,canvas:0,summaryTotal:0,labelTotal:0};
+classCounts[className]={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0};
 }
 
 const counts=classCounts[className];
@@ -231,14 +231,15 @@ counts.labelTotal++;
 
 if(isBeforeToday) counts.summaryTotal++;
 
-if(isBeforeToday && !isVerified && !["submitted","following up"].includes(andrewStatus)) counts.andrewMissing++;
+if(isBeforeToday && !isVerified) counts.unverified++;
+if(isBeforeToday && !isVerified && !["submitted","following up"].includes(andrewStatus)) counts.andrewTodo++;
 if(isBeforeToday && !isVerified && andrewStatus==="following up") counts.andrewFollowingUp++;
-if(isBeforeToday && !isVerified && !isCanvasComplete(r.Canvas)) counts.canvas++;
+if(isBeforeToday && !isVerified && !isCanvasComplete(r.Canvas)) counts.canvasIncomplete++;
 });
 
 const classNames=Object.keys(classCounts).sort((a,b)=>a.localeCompare(b));
 
-let totals={andrewMissing:0,andrewFollowingUp:0,canvas:0,summaryTotal:0,labelTotal:0};
+let totals={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0};
 
 function formatSummaryCell(count,total){
 const percent=total?Math.round((count/total)*100):0;
@@ -248,18 +249,20 @@ return `${percent}% (${count} out of ${total})`;
 const rowsHtml=classNames.map(className=>{
 const c=classCounts[className];
 
-totals.andrewMissing+=c.andrewMissing;
+totals.andrewTodo+=c.andrewTodo;
 totals.andrewFollowingUp+=c.andrewFollowingUp;
-totals.canvas+=c.canvas;
+totals.canvasIncomplete+=c.canvasIncomplete;
+totals.unverified+=c.unverified;
 totals.summaryTotal+=c.summaryTotal;
 totals.labelTotal+=c.labelTotal;
 
 return `
 <tr>
 <td>${className}</td>
-<td>${formatSummaryCell(c.andrewMissing,c.summaryTotal)}</td>
+<td>${formatSummaryCell(c.andrewTodo,c.summaryTotal)}</td>
 <td>${formatSummaryCell(c.andrewFollowingUp,c.summaryTotal)}</td>
-<td>${formatSummaryCell(c.canvas,c.summaryTotal)}</td>
+<td>${formatSummaryCell(c.canvasIncomplete,c.summaryTotal)}</td>
+<td>${formatSummaryCell(c.unverified,c.summaryTotal)}</td>
 <td>${c.labelTotal}</td>
 </tr>`;
 }).join("");
@@ -269,21 +272,23 @@ const summaryHtml=`
 <thead>
 <tr>
 <th>Class</th>
-<th>Andrew Missing</th>
+<th>Andrew Todo</th>
 <th>Andrew Following-Up</th>
-<th>Canvas</th>
+<th>Canvas Incomplete</th>
+<th>Unverified</th>
 <th>Total</th>
 </tr>
 </thead>
 <tbody>
+${rowsHtml}
 <tr class="summary-total-row">
-<td>Total</td>
-<td>${formatSummaryCell(totals.andrewMissing,totals.summaryTotal)}</td>
+<td>All Classes</td>
+<td>${formatSummaryCell(totals.andrewTodo,totals.summaryTotal)}</td>
 <td>${formatSummaryCell(totals.andrewFollowingUp,totals.summaryTotal)}</td>
-<td>${formatSummaryCell(totals.canvas,totals.summaryTotal)}</td>
+<td>${formatSummaryCell(totals.canvasIncomplete,totals.summaryTotal)}</td>
+<td>${formatSummaryCell(totals.unverified,totals.summaryTotal)}</td>
 <td>${totals.labelTotal}</td>
 </tr>
-${rowsHtml}
 </tbody>
 </table>`;
 
