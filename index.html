@@ -47,17 +47,17 @@ margin-top:15px;
 cursor:pointer;
 }
 
-.past-due { background:#ff0000; }
+.past-due { background:#ff0000; color:white; }
 
-.status-followingup { background:#fff3a0; }
-.status-completed { background:#e6ccff; }
-.status-submitted { background:#6a0dad; color:white; }
-.status-verified { background:#90EE90; }
+.status-followingup { background:#fff3a0; color:inherit; }
+.status-submitted-andrew { background:#e6ccff; color:inherit; }
+.status-submitted-both { background:#6a0dad; color:white; }
+.status-verified { background:#90EE90; color:inherit; }
 
 .group-notstarted { border-left:8px solid #ff0000; padding-left:6px; }
 .group-followingup { border-left:8px solid #ffd600; padding-left:6px; }
-.group-completed { border-left:8px solid #b266ff; padding-left:6px; }
-.group-submitted { border-left:8px solid #6a0dad; padding-left:6px; }
+.group-submitted-andrew { border-left:8px solid #b266ff; padding-left:6px; }
+.group-submitted-both { border-left:8px solid #6a0dad; padding-left:6px; }
 .group-verified { border-left:8px solid #90EE90; padding-left:6px; }
 
 select{ padding:4px; border-radius:6px; }
@@ -105,7 +105,7 @@ onchange="applyHideVerified(this.checked)">
 
 <script>
 
-const VERSION="5.4.5";
+const VERSION="5.4.6";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 const STATUS_IN_PROGRESS="In-Progress";
@@ -142,12 +142,18 @@ return String(v||"")
 
 /* STATUS */
 
+function normalizeAndrewStatus(v){
+const value=String(v||"").trim().toLowerCase();
+if(value==="completed") return STATUS_SUBMITTED.toLowerCase();
+return value;
+}
+
 function isAndrewDone(v){
-return ["completed",STATUS_SUBMITTED].includes(String(v||"").toLowerCase());
+return normalizeAndrewStatus(v)===STATUS_SUBMITTED.toLowerCase();
 }
 
 function isAndrewFollowingUp(v){
-return String(v||"").toLowerCase()===STATUS_FOLLOWING_UP.toLowerCase();
+return normalizeAndrewStatus(v)===STATUS_FOLLOWING_UP.toLowerCase();
 }
 
 function isAndrewMissing(v){
@@ -156,7 +162,7 @@ return !isAndrewDone(v) && !isAndrewFollowingUp(v);
 
 function isCanvasComplete(v){
 const value=String(v||"").toLowerCase();
-return value.trim().startsWith("[") || value.includes(STATUS_SUBMITTED);
+return value.trim().startsWith("[") || value.includes(STATUS_SUBMITTED.toLowerCase());
 }
 
 function isGroupPastDue(d){
@@ -169,46 +175,44 @@ const t=new Date(); t.setHours(0,0,0,0);
 return row.ParsedDate<t &&
 (!isAndrewDone(row.Andrew) ||
 !isCanvasComplete(row.Canvas) ||
-String(row.Verified)!=="true");
+String(row.Verified).toLowerCase()!=="true");
 }
 
 function getRowStatusRank(r){
-const a=String(r.Andrew||"").toLowerCase();
-const canvas=isCanvasComplete(r.Canvas);
-const v=String(r.Verified)==="true";
+const andrewStatus=normalizeAndrewStatus(r.Andrew);
+const canvasValue=String(r.Canvas||"").toLowerCase();
+const hasSubmittedCanvas=canvasValue.includes(STATUS_SUBMITTED.toLowerCase());
+const v=String(r.Verified).toLowerCase()==="true";
 
-if(v) return 5;
-if(a===STATUS_SUBMITTED.toLowerCase() && canvas) return 4;
-if(a==="completed") return 3;
-if(a===STATUS_FOLLOWING_UP.toLowerCase()) return 2;
-return 1;
+if(v) return 4;
+if(andrewStatus===STATUS_SUBMITTED.toLowerCase() && hasSubmittedCanvas) return 3;
+if(andrewStatus===STATUS_SUBMITTED.toLowerCase()) return 2;
+if(andrewStatus===STATUS_FOLLOWING_UP.toLowerCase()) return 1;
+return 0;
 }
 
 function getRowStatusClass(r){
-
 const rank=getRowStatusRank(r);
 
-if(rank===5) return "status-verified";
-if(rank===4) return "status-submitted";
-if(rank===3) return "status-completed";
+if(rank===4) return "status-verified";
+if(rank===3) return "status-submitted-both";
+if(rank===2) return "status-submitted-andrew";
+if(rank===1) return "status-followingup";
 
-if(String(r.Andrew).toLowerCase()===STATUS_FOLLOWING_UP)
-return "status-followingup";
-
-return "";
+return isRowPastDue(r)?"past-due":"";
 }
 
 function getGroupClass(rows){
-let lowest=5;
+let lowest=4;
 rows.forEach(r=>{
 const rank=getRowStatusRank(r);
 if(rank<lowest) lowest=rank;
 });
 
-if(lowest===5) return "group-verified";
-if(lowest===4) return "group-submitted";
-if(lowest===3) return "group-completed";
-if(lowest===2) return "group-followingup";
+if(lowest===4) return "group-verified";
+if(lowest===3) return "group-submitted-both";
+if(lowest===2) return "group-submitted-andrew";
+if(lowest===1) return "group-followingup";
 return "group-notstarted";
 }
 
@@ -224,7 +228,7 @@ getVisibleData().forEach(r=>{
 const className=String(r.Class||"Unassigned").trim()||"Unassigned";
 const isBeforeToday=Boolean(r.ParsedDate) && r.ParsedDate<today;
 const isVerified=String(r.Verified).toLowerCase()==="true";
-const andrewStatus=String(r.Andrew||"").trim().toLowerCase();
+const andrewStatus=normalizeAndrewStatus(r.Andrew);
 
 if(!classCounts[className]){
 classCounts[className]={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0};
@@ -236,7 +240,7 @@ counts.labelTotal++;
 if(isBeforeToday) counts.summaryTotal++;
 
 if(isBeforeToday && !isVerified) counts.unverified++;
-if(isBeforeToday && !isVerified && ![STATUS_SUBMITTED, STATUS_FOLLOWING_UP].map(status=>status.toLowerCase()).includes(andrewStatus)) counts.andrewTodo++;
+if(isBeforeToday && !isVerified && ![STATUS_SUBMITTED.toLowerCase(), STATUS_FOLLOWING_UP.toLowerCase()].includes(andrewStatus)) counts.andrewTodo++;
 if(isBeforeToday && !isVerified && andrewStatus===STATUS_FOLLOWING_UP.toLowerCase()) counts.andrewFollowingUp++;
 if(isBeforeToday && !isVerified && !isCanvasComplete(r.Canvas)) counts.canvasIncomplete++;
 });
@@ -329,7 +333,7 @@ render();
 
 function getVisibleData(){
 if(!hideVerifiedRows) return windowData;
-return windowData.filter(r=>String(r.Verified)!=="true");
+return windowData.filter(r=>String(r.Verified).toLowerCase()!=="true");
 }
 
 function groupByDate(data){
@@ -365,10 +369,9 @@ let tableRows="";
 rows.forEach(row=>{
 
 const status=getRowStatusClass(row);
-const past=isRowPastDue(row)?"past-due":"";
 
 tableRows+=`
-<tr class="${status} ${past}">
+<tr class="${status}">
 <td>${row.Date}</td>
 <td>${row.Class||""}</td>
 <td>${row.Assignment||""}</td>
@@ -383,9 +386,8 @@ onchange="updateNotes('${row.UID}',this.value)">${escapeAttr(row.Notes)}</textar
 <select onchange="updateAndrew('${row.UID}',this.value)">
 <option></option>
 <option ${row.Andrew===STATUS_IN_PROGRESS?"selected":""}>In-Progress</option>
-<option ${row.Andrew===STATUS_FOLLOWING_UP?"selected":""}>Following-Up</option>
-<option ${row.Andrew==="Completed"?"selected":""}>Completed</option>
-<option ${row.Andrew===STATUS_SUBMITTED?"selected":""}>Submitted</option>
+<option ${normalizeAndrewStatus(row.Andrew)===STATUS_FOLLOWING_UP.toLowerCase()?"selected":""}>Following-Up</option>
+<option ${normalizeAndrewStatus(row.Andrew)===STATUS_SUBMITTED.toLowerCase()?"selected":""}>Submitted</option>
 </select>
 </td>
 
@@ -393,7 +395,7 @@ onchange="updateNotes('${row.UID}',this.value)">${escapeAttr(row.Notes)}</textar
 
 <td>
 <input type="checkbox"
-${String(row.Verified)==="true"?"checked":""}
+${String(row.Verified).toLowerCase()==="true"?"checked":""}
 onchange="updateCheckbox('${row.UID}','Verified',this.checked)">
 </td>
 </tr>
@@ -408,10 +410,9 @@ let mobileCards="";
 rows.forEach(row=>{
 
 const status=getRowStatusClass(row);
-const past=isRowPastDue(row)?"past-due":"";
 
 mobileCards+=`
-<div class="card ${status} ${past}">
+<div class="card ${status}">
 
 <div><b>${row.Class||""}</b></div>
 <div>${row.Assignment||""}</div>
@@ -422,16 +423,15 @@ mobileCards+=`
 <select onchange="updateAndrew('${row.UID}',this.value)">
 <option></option>
 <option ${row.Andrew===STATUS_IN_PROGRESS?"selected":""}>In-Progress</option>
-<option ${row.Andrew===STATUS_FOLLOWING_UP?"selected":""}>Following-Up</option>
-<option ${row.Andrew==="Completed"?"selected":""}>Completed</option>
-<option ${row.Andrew===STATUS_SUBMITTED?"selected":""}>Submitted</option>
+<option ${normalizeAndrewStatus(row.Andrew)===STATUS_FOLLOWING_UP.toLowerCase()?"selected":""}>Following-Up</option>
+<option ${normalizeAndrewStatus(row.Andrew)===STATUS_SUBMITTED.toLowerCase()?"selected":""}>Submitted</option>
 </select>
 </div>
 
 <div style="margin-top:6px">
 Verified
 <input type="checkbox"
-${String(row.Verified)==="true"?"checked":""}
+${String(row.Verified).toLowerCase()==="true"?"checked":""}
 onchange="updateCheckbox('${row.UID}','Verified',this.checked)">
 </div>
 
@@ -521,7 +521,7 @@ function updateAndrew(uid,value){
 const row=windowData.find(r=>r.UID===uid);
 if(!row) return;
 
-row.Andrew=value;
+row.Andrew=value===STATUS_SUBMITTED?STATUS_SUBMITTED:value;
 
 triggerSave(row);
 
@@ -600,6 +600,7 @@ const formatted=formatDate(r.Date);
 
 return {
 ...r,
+Andrew: normalizeAndrewStatus(r.Andrew)===STATUS_SUBMITTED.toLowerCase()?STATUS_SUBMITTED:r.Andrew,
 Date:formatted,
 ParsedDate:parseMDY(formatted),
 UID:String(r.UID??i)
