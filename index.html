@@ -105,7 +105,7 @@ onchange="applyHideVerified(this.checked)">
 
 <script>
 
-const VERSION="5.4.5";
+const VERSION="5.4.6";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 const STATUS_IN_PROGRESS="In-Progress";
@@ -192,7 +192,7 @@ if(rank===5) return "status-verified";
 if(rank===4) return "status-submitted";
 if(rank===3) return "status-completed";
 
-if(String(r.Andrew).toLowerCase()===STATUS_FOLLOWING_UP)
+if(String(r.Andrew||"").toLowerCase()===STATUS_FOLLOWING_UP.toLowerCase())
 return "status-followingup";
 
 return "";
