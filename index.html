@@ -105,7 +105,7 @@ onchange="applyHideVerified(this.checked)">
 
 <script>
 
-const VERSION="5.4.6";
+const VERSION="5.5.0";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 const STATUS_IN_PROGRESS="In-Progress";
@@ -212,7 +212,175 @@ if(lowest===2) return "group-followingup";
 return "group-notstarted";
 }
 
-/* SUMMARY */
+/* ---------- SUMMARY (NEW CORE) ---------- */
+
+function buildCurrentSummaryRow(){
+
+  const today=new Date();
+  today.setHours(0,0,0,0);
+
+  const classCounts={};
+
+  // 🔥 IMPORTANT: uses ALL DATA (not filtered)
+  allData.forEach(r=>{
+    const className=String(r.Class||"Unassigned").trim()||"Unassigned";
+    const isBeforeToday=r.ParsedDate && r.ParsedDate<today;
+    const isVerified=String(r.Verified).toLowerCase()==="true";
+    const andrewStatus=String(r.Andrew||"").toLowerCase();
+
+    if(!classCounts[className]){
+      classCounts[className]={
+        andrewTodo:0,
+        andrewFollowingUp:0,
+        canvasIncomplete:0,
+        unverified:0,
+        labelTotal:0,
+        summaryTotal:0
+      };
+    }
+
+    const c=classCounts[className];
+
+    c.labelTotal++;
+    if(isBeforeToday) c.summaryTotal++;
+
+    if(isBeforeToday && !isVerified) c.unverified++;
+    if(isBeforeToday && !isVerified &&
+       ![STATUS_SUBMITTED, STATUS_FOLLOWING_UP].map(s=>s.toLowerCase()).includes(andrewStatus))
+       c.andrewTodo++;
+
+    if(isBeforeToday && !isVerified &&
+       andrewStatus===STATUS_FOLLOWING_UP.toLowerCase())
+       c.andrewFollowingUp++;
+
+    if(isBeforeToday && !isVerified && !isCanvasComplete(r.Canvas))
+       c.canvasIncomplete++;
+  });
+
+  const totals={
+    andrewTodo:0,
+    andrewFollowingUp:0,
+    canvasIncomplete:0,
+    unverified:0,
+    labelTotal:0
+  };
+
+  Object.values(classCounts).forEach(c=>{
+    totals.andrewTodo+=c.andrewTodo;
+    totals.andrewFollowingUp+=c.andrewFollowingUp;
+    totals.canvasIncomplete+=c.canvasIncomplete;
+    totals.unverified+=c.unverified;
+    totals.labelTotal+=c.labelTotal;
+  });
+
+  const row=[new Date()];
+
+  // ALL CLASSES
+  row.push(
+    "All Classes",
+    totals.andrewTodo,
+    totals.andrewFollowingUp,
+    totals.canvasIncomplete,
+    totals.unverified,
+    totals.labelTotal
+  );
+
+  // PER CLASS
+  Object.keys(classCounts).sort().forEach(name=>{
+    const c=classCounts[name];
+    row.push(
+      name,
+      c.andrewTodo,
+      c.andrewFollowingUp,
+      c.canvasIncomplete,
+      c.unverified,
+      c.labelTotal
+    );
+  });
+
+  return row;
+}
+
+/* ---------- SUMMARY UI ---------- */
+
+function updateSummary(){
+
+  const today=new Date(); today.setHours(0,0,0,0);
+  const classCounts={};
+
+  getVisibleData().forEach(r=>{
+    const className=String(r.Class||"Unassigned").trim()||"Unassigned";
+    const isBeforeToday=r.ParsedDate && r.ParsedDate<today;
+    const isVerified=String(r.Verified).toLowerCase()==="true";
+    const andrewStatus=String(r.Andrew||"").toLowerCase();
+
+    if(!classCounts[className]){
+      classCounts[className]={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0};
+    }
+
+    const c=classCounts[className];
+
+    c.labelTotal++;
+    if(isBeforeToday) c.summaryTotal++;
+
+    if(isBeforeToday && !isVerified) c.unverified++;
+    if(isBeforeToday && !isVerified && ![STATUS_SUBMITTED, STATUS_FOLLOWING_UP].map(s=>s.toLowerCase()).includes(andrewStatus)) c.andrewTodo++;
+    if(isBeforeToday && !isVerified && andrewStatus===STATUS_FOLLOWING_UP.toLowerCase()) c.andrewFollowingUp++;
+    if(isBeforeToday && !isVerified && !isCanvasComplete(r.Canvas)) c.canvasIncomplete++;
+  });
+
+  const classNames=Object.keys(classCounts).sort((a,b)=>a.localeCompare(b));
+
+  let totals={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0};
+
+  function pct(c,t){return t?`${Math.round((c/t)*100)}% (${c}/${t})`:"0% (0/0)";}
+
+  const rowsHtml=classNames.map(name=>{
+    const c=classCounts[name];
+    totals.andrewTodo+=c.andrewTodo;
+    totals.andrewFollowingUp+=c.andrewFollowingUp;
+    totals.canvasIncomplete+=c.canvasIncomplete;
+    totals.unverified+=c.unverified;
+    totals.summaryTotal+=c.summaryTotal;
+    totals.labelTotal+=c.labelTotal;
+
+    return `<tr>
+<td>${name}</td>
+<td>${pct(c.andrewTodo,c.summaryTotal)}</td>
+<td>${pct(c.andrewFollowingUp,c.summaryTotal)}</td>
+<td>${pct(c.canvasIncomplete,c.summaryTotal)}</td>
+<td>${pct(c.unverified,c.summaryTotal)}</td>
+<td>${c.labelTotal}</td>
+</tr>`;
+  }).join("");
+
+  document.querySelector(".summary").innerHTML=`
+<table class="summary-table">
+<thead>
+<tr>
+<th>Class</th>
+<th>Andrew Todo</th>
+<th>Andrew Following-Up</th>
+<th>Canvas Incomplete</th>
+<th>Unverified</th>
+<th>Total</th>
+</tr>
+</thead>
+<tbody>
+${rowsHtml}
+<tr class="summary-total-row">
+<td>All Classes</td>
+<td>${pct(totals.andrewTodo,totals.summaryTotal)}</td>
+<td>${pct(totals.andrewFollowingUp,totals.summaryTotal)}</td>
+<td>${pct(totals.canvasIncomplete,totals.summaryTotal)}</td>
+<td>${pct(totals.unverified,totals.summaryTotal)}</td>
+<td>${totals.labelTotal}</td>
+</tr>
+</tbody>
+</table>`;
+}
+  
+/* SUMMARY
 
 function updateSummary(){
 
@@ -298,7 +466,9 @@ ${rowsHtml}
 
 document.querySelector(".summary").innerHTML=summaryHtml;
 
-}
+}*/
+
+/* FILTERS */
 
 function populateClassFilter(){
 const select=document.getElementById("classFilter");
@@ -503,7 +673,23 @@ updateSummary();
 
 }
 
-/* SAVE */
+/* ---------- SAVE (UPDATED) ---------- */
+
+function triggerSave(row){
+
+  const summaryRow = buildCurrentSummaryRow();
+
+  fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({
+      row: row,
+      summary: summaryRow
+    })
+  });
+
+}
+
+/* SAVE
 
 function triggerSave(row){
 
@@ -512,7 +698,7 @@ method:"POST",
 body:JSON.stringify(row)
 });
 
-}
+}*/
 
 /* UPDATE */
 
