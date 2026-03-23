@@ -105,7 +105,7 @@ onchange="applyHideVerified(this.checked)">
 
 <script>
 
-const VERSION="5.5.3";
+const VERSION="5.5.4";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 const STATUS_IN_PROGRESS="In-Progress";
@@ -262,6 +262,7 @@ function buildCurrentSummaryRow(){
     andrewFollowingUp:0,
     canvasIncomplete:0,
     unverified:0,
+    summaryTotal:0,
     labelTotal:0
   };
 
