@@ -105,7 +105,7 @@ onchange="applyHideVerified(this.checked)">
 
 <script>
 
-const VERSION="5.5.2";
+const VERSION="5.5.3";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 const STATUS_IN_PROGRESS="In-Progress";
@@ -270,6 +270,7 @@ function buildCurrentSummaryRow(){
     totals.andrewFollowingUp+=c.andrewFollowingUp;
     totals.canvasIncomplete+=c.canvasIncomplete;
     totals.unverified+=c.unverified;
+    totals.summaryTotal+=c.summaryTotal;
     totals.labelTotal+=c.labelTotal;
   });
 
