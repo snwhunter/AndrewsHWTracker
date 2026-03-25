@@ -118,7 +118,7 @@ onchange="applyHideCanvasComplete(this.checked)">
 
 <script>
 
-const VERSION="5.5.6";
+const VERSION="5.5.7";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 const STATUS_IN_PROGRESS="In-Progress";
@@ -169,14 +169,14 @@ function isAndrewMissing(v){
 return !isAndrewDone(v) && !isAndrewFollowingUp(v);
 }
 
-function isCanvasComplete(v){
+function canvasContainsSubmitted(v){
 const value=String(v||"").toLowerCase();
-return value.trim().startsWith("[") || value.includes(STATUS_SUBMITTED);
+return value.includes(STATUS_SUBMITTED.toLowerCase());
 }
 
-function isGroupPastDue(d){
-const t=new Date(); t.setHours(0,0,0,0);
-return parseMDY(d)<t;
+function isCanvasComplete(v){
+const value=String(v||"").toLowerCase();
+return value.trim().startsWith("[") || canvasContainsSubmitted(value);
 }
 
 function isRowPastDue(row){
@@ -188,27 +188,22 @@ String(row.Verified)!=="true");
 }
 
 function getRowStatusRank(r){
-const a=String(r.Andrew||"").toLowerCase();
-const canvas=isCanvasComplete(r.Canvas);
-const v=String(r.Verified)==="true";
-
-if(v) return 5;
-if(a===STATUS_SUBMITTED.toLowerCase() && canvas) return 4;
-if(a==="completed") return 3;
-if(a===STATUS_FOLLOWING_UP.toLowerCase()) return 2;
-return 1;
+if(String(r.Verified)==="true") return 5;
+if(canvasContainsSubmitted(r.Canvas)) return 4;
+if(String(r.Andrew||"").toLowerCase()===STATUS_FOLLOWING_UP.toLowerCase()) return 3;
+if(String(r.Andrew||"").toLowerCase()===STATUS_SUBMITTED.toLowerCase()) return 2;
+if(isRowPastDue(r)) return 1;
+return 0;
 }
 
 function getRowStatusClass(r){
-
 const rank=getRowStatusRank(r);
 
 if(rank===5) return "status-verified";
 if(rank===4) return "status-submitted";
-if(rank===3) return "status-completed";
-
-if(String(r.Andrew||"").toLowerCase()===STATUS_FOLLOWING_UP.toLowerCase())
-return "status-followingup";
+if(rank===3) return "status-followingup";
+if(rank===2) return "status-completed";
+if(rank===1) return "past-due";
 
 return "";
 }
@@ -222,9 +217,10 @@ if(rank<lowest) lowest=rank;
 
 if(lowest===5) return "group-verified";
 if(lowest===4) return "group-submitted";
-if(lowest===3) return "group-completed";
-if(lowest===2) return "group-followingup";
-return "group-notstarted";
+if(lowest===3) return "group-followingup";
+if(lowest===2) return "group-completed";
+if(lowest===1) return "group-notstarted";
+return "";
 }
 
 /* ---------- SUMMARY (NEW CORE) ---------- */
@@ -562,7 +558,7 @@ Object.keys(groups)
 .forEach(date=>{
 
 const rows=groups[date];
-const groupClass=isGroupPastDue(date)?getGroupClass(rows):"";
+const groupClass=getGroupClass(rows);
 
 /* DESKTOP */
 
@@ -571,10 +567,9 @@ let tableRows="";
 rows.forEach(row=>{
 
 const status=getRowStatusClass(row);
-const past=isRowPastDue(row)?"past-due":"";
 
 tableRows+=`
-<tr class="${status} ${past}">
+<tr class="${status}">
 <td>${row.Date}</td>
 <td>${row.Class||""}</td>
 <td>${row.Assignment||""}</td>
@@ -614,10 +609,9 @@ let mobileCards="";
 rows.forEach(row=>{
 
 const status=getRowStatusClass(row);
-const past=isRowPastDue(row)?"past-due":"";
 
 mobileCards+=`
-<div class="card ${status} ${past}">
+<div class="card ${status}">
 
 <div><b>${row.Class||""}</b></div>
 <div>${row.Assignment||""}</div>
