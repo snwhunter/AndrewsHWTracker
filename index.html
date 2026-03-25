@@ -98,6 +98,18 @@ type="checkbox"
 id="hideVerifiedToggle"
 checked
 onchange="applyHideVerified(this.checked)">
+
+<label for="hideCanvasIncompleteToggle"><b>Hide Canvas Incomplete</b></label>
+<input
+type="checkbox"
+id="hideCanvasIncompleteToggle"
+onchange="applyHideCanvasIncomplete(this.checked)">
+
+<label for="hideCanvasCompleteToggle"><b>Hide Canvas Complete</b></label>
+<input
+type="checkbox"
+id="hideCanvasCompleteToggle"
+onchange="applyHideCanvasComplete(this.checked)">
 </div>
 </header>
 
@@ -106,7 +118,7 @@ onchange="applyHideVerified(this.checked)">
 
 <script>
 
-const VERSION="5.5.5";
+const VERSION="5.5.6";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 const STATUS_IN_PROGRESS="In-Progress";
@@ -118,6 +130,8 @@ let windowData=[];
 let headers=[];
 let activeClassFilter="";
 let hideVerifiedRows=true;
+let hideCanvasIncompleteRows=false;
+let hideCanvasCompleteRows=false;
 
 /* DATE PARSER */
 
@@ -502,9 +516,26 @@ hideVerifiedRows=checked;
 render();
 }
 
+function applyHideCanvasIncomplete(checked){
+hideCanvasIncompleteRows=checked;
+render();
+}
+
+function applyHideCanvasComplete(checked){
+hideCanvasCompleteRows=checked;
+render();
+}
+
 function getVisibleData(){
-if(!hideVerifiedRows) return windowData;
-return windowData.filter(r=>String(r.Verified)!=="true");
+return windowData.filter(r=>{
+if(hideVerifiedRows && String(r.Verified)==="true") return false;
+
+const canvasComplete=isCanvasComplete(r.Canvas);
+if(hideCanvasIncompleteRows && !canvasComplete) return false;
+if(hideCanvasCompleteRows && canvasComplete) return false;
+
+return true;
+});
 }
 
 function groupByDate(data){
