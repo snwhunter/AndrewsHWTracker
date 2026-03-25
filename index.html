@@ -99,6 +99,12 @@ id="hideVerifiedToggle"
 checked
 onchange="applyHideVerified(this.checked)">
 
+<label for="hideFollowingUpToggle"><b>Hide Following-Up</b></label>
+<input
+type="checkbox"
+id="hideFollowingUpToggle"
+onchange="applyHideFollowingUp(this.checked)">
+
 <label for="hideCanvasIncompleteToggle"><b>Hide Canvas Incomplete</b></label>
 <input
 type="checkbox"
@@ -118,7 +124,7 @@ onchange="applyHideCanvasComplete(this.checked)">
 
 <script>
 
-const VERSION="5.5.7";
+const VERSION="5.5.8";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 const STATUS_IN_PROGRESS="In-Progress";
@@ -130,6 +136,7 @@ let windowData=[];
 let headers=[];
 let activeClassFilter="";
 let hideVerifiedRows=true;
+let hideFollowingUpRows=false;
 let hideCanvasIncompleteRows=false;
 let hideCanvasCompleteRows=false;
 
@@ -512,6 +519,11 @@ hideVerifiedRows=checked;
 render();
 }
 
+function applyHideFollowingUp(checked){
+hideFollowingUpRows=checked;
+render();
+}
+
 function applyHideCanvasIncomplete(checked){
 hideCanvasIncompleteRows=checked;
 render();
@@ -525,6 +537,7 @@ render();
 function getVisibleData(){
 return windowData.filter(r=>{
 if(hideVerifiedRows && String(r.Verified)==="true") return false;
+if(hideFollowingUpRows && isAndrewFollowingUp(r.Andrew)) return false;
 
 const canvasComplete=isCanvasComplete(r.Canvas);
 if(hideCanvasIncompleteRows && !canvasComplete) return false;
