@@ -124,7 +124,7 @@ onchange="applyHideCanvasComplete(this.checked)">
 
 <script>
 
-const VERSION="5.5.8";
+const VERSION="5.5.9";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 const STATUS_IN_PROGRESS="In-Progress";
@@ -330,7 +330,7 @@ function updateSummary(){
   const today=new Date(); today.setHours(0,0,0,0);
   const classCounts={};
 
-  getVisibleData().forEach(r=>{
+  windowData.forEach(r=>{
     const className=String(r.Class||"Unassigned").trim()||"Unassigned";
     const isBeforeToday=r.ParsedDate && r.ParsedDate<today;
     const isVerified=String(r.Verified).toLowerCase()==="true";
