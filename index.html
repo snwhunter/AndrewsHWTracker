@@ -355,11 +355,26 @@ function updateSummary(){
   const classNames=Object.keys(classCounts).sort((a,b)=>a.localeCompare(b));
 
   let totals={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0};
+  let totalGradePoints=0;
+  let totalGradeCount=0;
 
   function pct(c,t){return t?`${Math.round((c/t)*100)}% (${c}/${t})`:"0% (0/0)";}
+  function parseGradeValue(raw){
+    if(raw===null || raw===undefined) return null;
+    const parsed=parseFloat(String(raw).replace(/[^0-9.]/g,""));
+    return Number.isFinite(parsed)?parsed:null;
+  }
+  function formatGradeValue(value){
+    return Number.isFinite(value)?`${value.toFixed(2)}%`:"";
+  }
 
   const rowsHtml=classNames.map(name=>{
     const c=classCounts[name];
+    const gradeValue=parseGradeValue(latestGradesByClass[name]);
+    if(gradeValue!==null){
+      totalGradePoints+=gradeValue;
+      totalGradeCount++;
+    }
     totals.andrewTodo+=c.andrewTodo;
     totals.andrewFollowingUp+=c.andrewFollowingUp;
     totals.canvasIncomplete+=c.canvasIncomplete;
@@ -369,38 +384,40 @@ function updateSummary(){
 
     return `<tr>
 <td>${name}</td>
-<td>${escapeAttr(latestGradesByClass[name]??"")}</td>
 <td>${pct(c.andrewTodo,c.summaryTotal)}</td>
 <td>${pct(c.andrewFollowingUp,c.summaryTotal)}</td>
 <td>${pct(c.canvasIncomplete,c.summaryTotal)}</td>
 <td>${pct(c.unverified,c.summaryTotal)}</td>
 <td>${c.labelTotal}</td>
+<td>${escapeAttr(latestGradesByClass[name]??"")}</td>
 </tr>`;
   }).join("");
+
+  const allClassesGrade=formatGradeValue(totalGradeCount?totalGradePoints/totalGradeCount:NaN);
 
   document.querySelector(".summary").innerHTML=`
 <table class="summary-table">
 <thead>
 <tr>
 <th>Class</th>
-<th>Grades</th>
 <th>Andrew Todo</th>
 <th>Andrew Following-Up</th>
 <th>Canvas Incomplete</th>
 <th>Unverified</th>
 <th>Total</th>
+<th>Grades</th>
 </tr>
 </thead>
 <tbody>
 ${rowsHtml}
 <tr class="summary-total-row">
 <td>All Classes</td>
-<td>—</td>
 <td>${pct(totals.andrewTodo,totals.summaryTotal)}</td>
 <td>${pct(totals.andrewFollowingUp,totals.summaryTotal)}</td>
 <td>${pct(totals.canvasIncomplete,totals.summaryTotal)}</td>
 <td>${pct(totals.unverified,totals.summaryTotal)}</td>
 <td>${totals.labelTotal}</td>
+<td>${allClassesGrade||"—"}</td>
 </tr>
 </tbody>
 </table>`;
