@@ -124,7 +124,7 @@ onchange="applyHideCanvasComplete(this.checked)">
 
 <script>
 
-const VERSION="5.6.0";
+const VERSION="5.6.1";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 const STATUS_IN_PROGRESS="In-Progress";
@@ -367,6 +367,10 @@ function updateSummary(){
   function formatGradeValue(value){
     return Number.isFinite(value)?`${value.toFixed(2)}%`:"";
   }
+  function formatSummaryClassLabel(className){
+    if(window.innerWidth>768) return className;
+    return String(className).split("-")[0].trim()||className;
+  }
 
   const rowsHtml=classNames.map(name=>{
     const c=classCounts[name];
@@ -383,7 +387,7 @@ function updateSummary(){
     totals.labelTotal+=c.labelTotal;
 
     return `<tr>
-<td>${name}</td>
+<td>${formatSummaryClassLabel(name)}</td>
 <td>${pct(c.andrewTodo,c.summaryTotal)}</td>
 <td>${pct(c.andrewFollowingUp,c.summaryTotal)}</td>
 <td>${pct(c.canvasIncomplete,c.summaryTotal)}</td>
