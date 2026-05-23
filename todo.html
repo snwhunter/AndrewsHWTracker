@@ -34,7 +34,7 @@ th:nth-child(7), td:nth-child(7) { width:auto; }
 <div id="content"></div>
 
 <script>
-const VERSION = "1.2.2";
+const VERSION = "1.2.3";
 const STATUS_IN_PROGRESS = "In-Progress";
 const STATUS_FOLLOWING_UP = "Following-Up";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
@@ -194,7 +194,10 @@ function useData(json, fromCache){
     return { ...r, Date: formatted, ParsedDate: parseMDY(formatted), UID: String(r.UID??i) };
   });
 
-  const isVerified = (r)=> String(r.Verified||"").trim().toLowerCase() === "verified";
+  const isVerified = (r)=> {
+    const value = String(r.Verified ?? "").trim().toLowerCase();
+    return value === "true" || value === "verified";
+  };
 
   const activeRows = allData.filter(r=>!isVerified(r));
   inProgressRows = activeRows.filter(r=>String(r.Andrew||"").trim()===STATUS_IN_PROGRESS);
