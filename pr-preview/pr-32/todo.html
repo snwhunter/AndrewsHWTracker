@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Todo List - Andrew's HW Tracker</title>
+<style>
+body { font-family: Arial, sans-serif; margin:0; padding:12px; }
+h1 { margin: 0 0 10px 0; }
+h2 { margin: 16px 0 8px 0; }
+#meta { margin-bottom: 10px; font-size: 14px; }
+.table-wrapper { overflow-x:auto; margin-bottom: 14px; }
+table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+th, td { border:1px solid #ddd; padding:6px; vertical-align: top; }
+th { background:#f0f0f0; position: sticky; top: 0; }
+.move-controls { display:flex; gap:4px; flex-wrap:wrap; }
+.move-controls button { cursor:pointer; padding:2px 6px; }
+select, button { border-radius:6px; }
+input[type="checkbox"] { width:18px; height:18px; }
+.notes-cell { white-space: pre-wrap; word-break: break-word; }
+
+th:nth-child(1), td:nth-child(1) { width:120px; text-align:center; }
+th:nth-child(2), td:nth-child(2) { width:90px; text-align:center; }
+th:nth-child(3), td:nth-child(3) { width:180px; }
+th:nth-child(4), td:nth-child(4) { width:280px; }
+th:nth-child(5), td:nth-child(5) { width:120px; text-align:center; }
+th:nth-child(6), td:nth-child(6) { width:120px; text-align:center; }
+th:nth-child(7), td:nth-child(7) { width:auto; }
+</style>
+</head>
+<body>
+<h1>Todo List</h1>
+<div id="meta">Loading...</div>
+<div id="content"></div>
+
+<script>
+const VERSION = "1.2.2";
+const STATUS_IN_PROGRESS = "In-Progress";
+const STATUS_FOLLOWING_UP = "Following-Up";
+const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
+const STORAGE_ORDER_KEY = "todoOrderByUid";
+const STORAGE_FOLLOWUP_ORDER_KEY = "todoFollowUpOrderByUid";
+
+let allData = [];
+let inProgressRows = [];
+let followingUpRows = [];
+
+function parseMDY(s){
+  if(!s) return null;
+  const [m,d,y]=String(s).split("/");
+  return new Date("20"+y,m-1,d);
+}
+
+function formatDate(iso){
+  if(!iso) return "";
+  const d = new Date(iso);
+  return `${d.getMonth()+1}/${d.getDate()}/${String(d.getFullYear()).slice(-2)}`;
+}
+
+function getOrder(storageKey){
+  try {
+    const arr = JSON.parse(localStorage.getItem(storageKey) || "[]");
+    return Array.isArray(arr) ? arr.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveOrder(storageKey, arr){
+  localStorage.setItem(storageKey, JSON.stringify(arr.map(String)));
+}
+
+function buildOrderIndex(storageKey, rows){
+  const orderSet = new Set(rows.map(r=>r.UID));
+  const cleaned = getOrder(storageKey).filter(uid=>orderSet.has(uid));
+  const missing = rows.map(r=>r.UID).filter(uid=>!cleaned.includes(uid));
+  const finalOrder = cleaned.concat(missing);
+  saveOrder(storageKey, finalOrder);
+  const map = new Map();
+  finalOrder.forEach((uid, idx)=>map.set(uid, idx));
+  return map;
+}
+
+function sortRows(rows, storageKey){
+  const orderIndex = buildOrderIndex(storageKey, rows);
+
+  return [...rows].sort((a,b)=>{
+    const manual = (orderIndex.get(a.UID) ?? Number.MAX_SAFE_INTEGER) - (orderIndex.get(b.UID) ?? Number.MAX_SAFE_INTEGER);
+    if(manual!==0) return manual;
+
+    const dA = a.ParsedDate ? a.ParsedDate.getTime() : Number.MAX_SAFE_INTEGER;
+    const dB = b.ParsedDate ? b.ParsedDate.getTime() : Number.MAX_SAFE_INTEGER;
+    if(dA!==dB) return dA-dB;
+
+    return String(a.Class||"").localeCompare(String(b.Class||""));
+  });
+}
+
+function moveUid(uid, mode, storageKey, rowSet){
+  const order = getOrder(storageKey).filter(id=>rowSet.some(r=>r.UID===id));
+  const idx = order.indexOf(uid);
+  if(idx===-1) return;
+
+  if(mode==="top" && idx>0){
+    order.splice(idx,1);
+    order.unshift(uid);
+  } else if(mode==="up" && idx>0){
+    [order[idx-1], order[idx]] = [order[idx], order[idx-1]];
+  } else if(mode==="down" && idx<order.length-1){
+    [order[idx], order[idx+1]] = [order[idx+1], order[idx]];
+  } else if(mode==="bottom" && idx<order.length-1){
+    order.splice(idx,1);
+    order.push(uid);
+  }
+
+  const allKnown = getOrder(storageKey);
+  const remainder = allKnown.filter(id=>!rowSet.some(r=>r.UID===id));
+  saveOrder(storageKey, order.concat(remainder));
+  render();
+}
+
+function renderTable(rows, storageKey){
+  const sortedRows = sortRows(rows, storageKey);
+  const body = sortedRows.map(r=>`
+    <tr>
+      <td>
+        <div class="move-controls">
+          <button onclick="moveUid('${r.UID}','top','${storageKey}',${storageKey===STORAGE_ORDER_KEY ? 'inProgressRows' : 'followingUpRows'})" title="Move top">⏫</button>
+          <button onclick="moveUid('${r.UID}','up','${storageKey}',${storageKey===STORAGE_ORDER_KEY ? 'inProgressRows' : 'followingUpRows'})" title="Move up">↑</button>
+          <button onclick="moveUid('${r.UID}','down','${storageKey}',${storageKey===STORAGE_ORDER_KEY ? 'inProgressRows' : 'followingUpRows'})" title="Move down">↓</button>
+          <button onclick="moveUid('${r.UID}','bottom','${storageKey}',${storageKey===STORAGE_ORDER_KEY ? 'inProgressRows' : 'followingUpRows'})" title="Move bottom">⏬</button>
+        </div>
+      </td>
+      <td>${r.Date||""}</td>
+      <td>${r.Class||""}</td>
+      <td>${r.Assignment||""}</td>
+      <td>${r.Andrew||""}</td>
+      <td>${r.Canvas||""}</td>
+      <td class="notes-cell">${r.Notes||""}</td>
+    </tr>
+  `).join("");
+
+  return `
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Move</th>
+            <th>Date</th>
+            <th>Class</th>
+            <th>Assignment</th>
+            <th>Andrew</th>
+            <th>Canvas</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function render(){
+  document.getElementById("meta").textContent = `Todo List v${VERSION} • ${inProgressRows.length} in-progress • ${followingUpRows.length} following-up`;
+
+  document.getElementById("content").innerHTML = `
+    <h2>Andrew In-Progress</h2>
+    ${renderTable(inProgressRows, STORAGE_ORDER_KEY)}
+    <h2>Andrew Following-up</h2>
+    ${renderTable(followingUpRows, STORAGE_FOLLOWUP_ORDER_KEY)}
+  `;
+}
+
+async function loadData(){
+  const cached=localStorage.getItem("hwTrackerCache");
+  if(cached){
+    try { useData(JSON.parse(cached), true); } catch {}
+  }
+
+  try {
+    const res=await fetch(API_URL,{cache:"no-store"});
+    const json=await res.json();
+    localStorage.setItem("hwTrackerCache",JSON.stringify(json));
+    useData(json, false);
+  } catch (e) {
+    if(!cached) document.getElementById("meta").textContent = "Failed to load data";
+  }
+}
+
+function useData(json, fromCache){
+  const raw = Array.isArray(json.data)?json.data:[];
+  allData = raw.map((r,i)=>{
+    const formatted = formatDate(r.Date);
+    return { ...r, Date: formatted, ParsedDate: parseMDY(formatted), UID: String(r.UID??i) };
+  });
+
+  const isVerified = (r)=> String(r.Verified||"").trim().toLowerCase() === "verified";
+
+  const activeRows = allData.filter(r=>!isVerified(r));
+  inProgressRows = activeRows.filter(r=>String(r.Andrew||"").trim()===STATUS_IN_PROGRESS);
+  followingUpRows = activeRows.filter(r=>String(r.Andrew||"").trim()===STATUS_FOLLOWING_UP);
+
+  if(!fromCache){
+    const t = new Date();
+    document.getElementById("meta").textContent = `Todo List v${VERSION} • Updated ${t.toLocaleString()}`;
+  }
+  render();
+}
+
+loadData();
+</script>
+</body>
+</html>
