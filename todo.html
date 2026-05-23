@@ -194,11 +194,7 @@ function useData(json, fromCache){
     return { ...r, Date: formatted, ParsedDate: parseMDY(formatted), UID: String(r.UID??i) };
   });
 
-  const isVerified = (r)=> {
-    const andrew = String(r.Andrew||"").trim().toLowerCase();
-    const canvas = String(r.Canvas||"").trim().toLowerCase();
-    return andrew === "verified" || canvas === "verified";
-  };
+  const isVerified = (r)=> String(r.Verified||"").trim().toLowerCase() === "verified";
 
   const activeRows = allData.filter(r=>!isVerified(r));
   inProgressRows = activeRows.filter(r=>String(r.Andrew||"").trim()===STATUS_IN_PROGRESS);
