@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Andrew's HW Dashboard</title>
+
+<style>
+body { font-family: Arial, sans-serif; margin:0; display:flex; flex-direction:column; height:100vh; }
+header { position:sticky; top:0; z-index:20; background:#fff; border-bottom:1px solid #ddd; }
+h1 { text-align:center; margin:0; padding:5px; }
+
+#header-info { display:flex; justify-content:space-between; padding:5px 10px; font-size:14px; font-weight:bold; }
+.summary { background:#f4f6f8; padding:8px 10px; border-radius:8px; font-size:13px; margin-top:5px; overflow-x:auto; }
+.summary-table { border-collapse: collapse; width: 100%; min-width: 680px; }
+.summary-table th, .summary-table td { border:1px solid #cfd6dd; padding:6px 8px; text-align:center; height:20px; white-space:nowrap; }
+.summary-table th:first-child, .summary-table td:first-child { text-align:left; }
+.summary-total-row { font-weight:bold; background:#e8edf2; }
+.filter-bar { display:flex; justify-content:center; align-items:center; gap:8px; padding:0 10px 8px; font-size:14px; }
+
+#content { overflow-y:auto; flex:1; padding:10px; }
+
+table { border-collapse:collapse; width:100%; table-layout:fixed; }
+th, td { border:1px solid #ddd; padding:8px; }
+th { position:sticky; top:0; background:#f0f0f0; }
+
+table.data-table th:nth-child(1), table.data-table td:nth-child(1) { width:90px; text-align:center; }
+table.data-table th:nth-child(2), table.data-table td:nth-child(2) { width:110px; text-align:center; }
+table.data-table th:nth-child(3), table.data-table td:nth-child(3) { width:200px; }
+table.data-table th:nth-child(4), table.data-table td:nth-child(4) { width:350px; }
+table.data-table th:nth-child(5), table.data-table td:nth-child(5) { width:120px; text-align:center; }
+table.data-table th:nth-child(6), table.data-table td:nth-child(6) { width:120px; text-align:center; }
+table.data-table th:nth-child(7), table.data-table td:nth-child(7) { width:70px; text-align:center; }
+
+.table-wrapper { overflow-x:auto; }
+
+.card{
+border:1px solid #ddd;
+border-radius:10px;
+padding:10px;
+margin:10px 0;
+}
+
+.mobile-date{
+font-weight:bold;
+margin-top:15px;
+cursor:pointer;
+}
+
+.past-due { background:#ff0000; }
+
+.status-followingup { background:#fff3a0; }
+.status-completed { background:#e6ccff; }
+.status-submitted { background:#6a0dad; color:white; }
+.status-verified { background:#90EE90; }
+
+.group-notstarted { border-left:8px solid #ff0000; padding-left:6px; }
+.group-followingup { border-left:8px solid #ffd600; padding-left:6px; }
+.group-completed { border-left:8px solid #b266ff; padding-left:6px; }
+.group-submitted { border-left:8px solid #6a0dad; padding-left:6px; }
+.group-verified { border-left:8px solid #90EE90; padding-left:6px; }
+
+select{ padding:4px; border-radius:6px; }
+input[type="checkbox"]{ width:20px;height:20px;}
+.notes-input{ width:100%; box-sizing:border-box; resize:vertical; min-height:40px; font-family:inherit; }
+
+@media (max-width:768px){
+.desktop-view{display:none;}
+}
+
+@media (min-width:769px){
+.mobile-view{display:none;}
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>Andrew's HW Dashboard</h1>
+
+<div id="header-info">
+<div id="versionLabel">Dashboard: ? | API: ?</div>
+<div class="summary"></div>
+<div id="lastUpdated"></div>
+</div>
+
+<div class="filter-bar">
+<label for="classFilter"><b>Class:</b></label>
+<select id="classFilter" onchange="applyClassFilter(this.value)">
+<option value="">All Classes</option>
+</select>
+
+<label for="hideVerifiedToggle"><b>Hide Verified</b></label>
+<input
+type="checkbox"
+id="hideVerifiedToggle"
+checked
+onchange="applyHideVerified(this.checked)">
+
+<label for="hideFollowingUpToggle"><b>Hide Following-Up</b></label>
+<input
+type="checkbox"
+id="hideFollowingUpToggle"
+onchange="applyHideFollowingUp(this.checked)">
+
+<label for="hideCanvasIncompleteToggle"><b>Hide Canvas Incomplete</b></label>
+<input
+type="checkbox"
+id="hideCanvasIncompleteToggle"
+onchange="applyHideCanvasIncomplete(this.checked)">
+
+<label for="hideCanvasCompleteToggle"><b>Hide Canvas Complete</b></label>
+<input
+type="checkbox"
+id="hideCanvasCompleteToggle"
+onchange="applyHideCanvasComplete(this.checked)">
+
+<a href="todo.html" target="_blank" rel="noopener noreferrer"><b>Todo Priority</b></a>
+</div>
+</header>
+
+<div id="banner"></div>
+<div id="content">Loading...</div>
+
+<script>
+
+const VERSION="5.6.4";
+const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
+
+const STATUS_IN_PROGRESS="In-Progress";
+const STATUS_SUBMITTED="Submitted";
+const STATUS_FOLLOWING_UP="Following-Up";
+  
+let allData=[];
+let windowData=[];
+let headers=[];
+let latestGradesByClass={};
+let activeClassFilter="";
+let hideVerifiedRows=true;
+let hideFollowingUpRows=false;
+let hideCanvasIncompleteRows=false;
+let hideCanvasCompleteRows=false;
+
+/* DATE PARSER */
+
+function parseMDY(s){
+if(!s) return null;
+const [m,d,y]=s.split("/");
+return new Date("20"+y,m-1,d);
+}
+
+function formatDate(iso){
+if(!iso) return "";
+const d=new Date(iso);
+return `${d.getMonth()+1}/${d.getDate()}/${String(d.getFullYear()).slice(-2)}`;
+}
+
+function escapeAttr(v){
+return String(v||"")
+.replace(/&/g,"&amp;")
+.replace(/"/g,"&quot;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;");
+}
+
+/* STATUS */
+
+function isAndrewDone(v){
+return ["completed",STATUS_SUBMITTED].includes(String(v||"").toLowerCase());
+}
+
+function isAndrewFollowingUp(v){
+return String(v||"").toLowerCase()===STATUS_FOLLOWING_UP.toLowerCase();
+}
+
+function isAndrewMissing(v){
+return !isAndrewDone(v) && !isAndrewFollowingUp(v);
+}
+
+function canvasContainsSubmitted(v){
+const value=String(v||"").toLowerCase();
+return value.includes(STATUS_SUBMITTED.toLowerCase());
+}
+
+function isCanvasComplete(v){
+const value=String(v||"").toLowerCase();
+return value.trim().startsWith("[") || canvasContainsSubmitted(value);
+}
+
+function isRowPastDue(row){
+const t=new Date(); t.setHours(0,0,0,0);
+return row.ParsedDate<t &&
+(!isAndrewDone(row.Andrew) ||
+!isCanvasComplete(row.Canvas) ||
+String(row.Verified)!=="true");
+}
+
+function getRowStatusRank(r){
+if(String(r.Verified)==="true") return 5;
+if(canvasContainsSubmitted(r.Canvas)) return 4;
+if(String(r.Andrew||"").toLowerCase()===STATUS_FOLLOWING_UP.toLowerCase()) return 3;
+if(String(r.Andrew||"").toLowerCase()===STATUS_SUBMITTED.toLowerCase()) return 2;
+if(isRowPastDue(r)) return 1;
+return 0;
+}
+
+function getRowStatusClass(r){
+const rank=getRowStatusRank(r);
+
+if(rank===5) return "status-verified";
+if(rank===4) return "status-submitted";
+if(rank===3) return "status-followingup";
+if(rank===2) return "status-completed";
+if(rank===1) return "past-due";
+
+return "";
+}
+
+function getGroupClass(rows){
+let lowest=5;
+rows.forEach(r=>{
+const rank=getRowStatusRank(r);
+if(rank<lowest) lowest=rank;
+});
+
+if(lowest===5) return "group-verified";
+if(lowest===4) return "group-submitted";
+if(lowest===3) return "group-followingup";
+if(lowest===2) return "group-completed";
+if(lowest===1) return "group-notstarted";
+return "";
+}
+
+/* ---------- SUMMARY (NEW CORE) ---------- */
+
+function buildCurrentSummaryRow(){
+
+  const today=new Date();
+  today.setHours(0,0,0,0);
+
+  const classCounts={};
+
+  // 🔥 IMPORTANT: uses ALL DATA (not filtered)
+  allData.forEach(r=>{
+    const className=String(r.Class||"Unassigned").trim()||"Unassigned";
+    const isBeforeToday=r.ParsedDate && r.ParsedDate<today;
+    const isVerified=String(r.Verified).toLowerCase()==="true";
+    const andrewStatus=String(r.Andrew||"").toLowerCase();
+
+    if(!classCounts[className]){
+      classCounts[className]={
+        andrewTodo:0,
+        andrewFollowingUp:0,
+        canvasIncomplete:0,
+        unverified:0,
+        labelTotal:0,
+        summaryTotal:0
+      };
+    }
+
+    const c=classCounts[className];
+
+    c.labelTotal++;
+    if(isBeforeToday) c.summaryTotal++;
+
+    if(isBeforeToday && !isVerified) c.unverified++;
+    if(isBeforeToday && !isVerified &&
+       ![STATUS_SUBMITTED, STATUS_FOLLOWING_UP].map(s=>s.toLowerCase()).includes(andrewStatus))
+       c.andrewTodo++;
+
+    if(isBeforeToday && !isVerified &&
+       andrewStatus===STATUS_FOLLOWING_UP.toLowerCase())
+       c.andrewFollowingUp++;
+
+    if(isBeforeToday && !isVerified && !isCanvasComplete(r.Canvas))
+       c.canvasIncomplete++;
+  });
+
+  const totals={
+    andrewTodo:0,
+    andrewFollowingUp:0,
+    canvasIncomplete:0,
+    unverified:0,
+    summaryTotal:0,
+    labelTotal:0
+  };
+
+  Object.values(classCounts).forEach(c=>{
+    totals.andrewTodo+=c.andrewTodo;
+    totals.andrewFollowingUp+=c.andrewFollowingUp;
+    totals.canvasIncomplete+=c.canvasIncomplete;
+    totals.unverified+=c.unverified;
+    totals.summaryTotal+=c.summaryTotal;
+    totals.labelTotal+=c.labelTotal;
+  });
+
+  const row=[new Date()];
+
+  // ALL CLASSES
+  row.push(
+    "All Classes",
+    totals.andrewTodo,
+    totals.andrewFollowingUp,
+    totals.canvasIncomplete,
+    totals.unverified,
+    totals.summaryTotal,
+    totals.labelTotal
+  );
+
+  // PER CLASS
+  Object.keys(classCounts).sort().forEach(name=>{
+    const c=classCounts[name];
+    row.push(
+      name,
+      c.andrewTodo,
+      c.andrewFollowingUp,
+      c.canvasIncomplete,
+      c.unverified,
+      c.summaryTotal,
+      c.labelTotal
+    );
+  });
+
+  return row;
+}
+
+/* ---------- SUMMARY UI ---------- */
+
+function updateSummary(){
+
+  const today=new Date(); today.setHours(0,0,0,0);
+  const classCounts={};
+
+  windowData.forEach(r=>{
+    const className=String(r.Class||"Unassigned").trim()||"Unassigned";
+    const isBeforeToday=r.ParsedDate && r.ParsedDate<today;
+    const isVerified=String(r.Verified).toLowerCase()==="true";
+    const andrewStatus=String(r.Andrew||"").toLowerCase();
+
+    if(!classCounts[className]){
+      classCounts[className]={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0};
+    }
+
+    const c=classCounts[className];
+
+    c.labelTotal++;
+    if(isBeforeToday) c.summaryTotal++;
+
+    if(isBeforeToday && !isVerified) c.unverified++;
+    if(isBeforeToday && !isVerified && ![STATUS_SUBMITTED, STATUS_FOLLOWING_UP].map(s=>s.toLowerCase()).includes(andrewStatus)) c.andrewTodo++;
+    if(isBeforeToday && !isVerified && andrewStatus===STATUS_FOLLOWING_UP.toLowerCase()) c.andrewFollowingUp++;
+    if(isBeforeToday && !isVerified && !isCanvasComplete(r.Canvas)) c.canvasIncomplete++;
+  });
+
+  const classNames=Object.keys(classCounts).sort((a,b)=>a.localeCompare(b));
+
+  let totals={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0};
+  let totalGradePoints=0;
+  let totalGradeCount=0;
+
+  function pct(c,t){return t?`${Math.round((c/t)*100)}% (${c}/${t})`:"0% (0/0)";}
+  function parseGradeValue(raw){
+    if(raw===null || raw===undefined) return null;
+    const parsed=parseFloat(String(raw).replace(/[^0-9.]/g,""));
+    return Number.isFinite(parsed)?parsed:null;
+  }
+  function formatGradeValue(value){
+    return Number.isFinite(value)?`${value.toFixed(2)}%`:"";
+  }
+  function formatSummaryClassLabel(className){
+    if(window.innerWidth>768) return className;
+    return String(className).split("-")[0].trim()||className;
+  }
+  function formatSummaryHeaderLabel(label){
+    if(window.innerWidth>768) return label;
+    return String(label).trim().split(/\s+/)[0]||label;
+  }
+
+  const rowsHtml=classNames.map(name=>{
+    const c=classCounts[name];
+    const gradeValue=parseGradeValue(latestGradesByClass[name]);
+    if(gradeValue!==null){
+      totalGradePoints+=gradeValue;
+      totalGradeCount++;
+    }
+    totals.andrewTodo+=c.andrewTodo;
+    totals.andrewFollowingUp+=c.andrewFollowingUp;
+    totals.canvasIncomplete+=c.canvasIncomplete;
+    totals.unverified+=c.unverified;
+    totals.summaryTotal+=c.summaryTotal;
+    totals.labelTotal+=c.labelTotal;
+
+    return `<tr>
+<td>${formatSummaryClassLabel(name)}</td>
+<td>${pct(c.andrewTodo,c.summaryTotal)}</td>
+<td>${pct(c.andrewFollowingUp,c.summaryTotal)}</td>
+<td>${pct(c.canvasIncomplete,c.summaryTotal)}</td>
+<td>${pct(c.unverified,c.summaryTotal)}</td>
+<td>${c.labelTotal}</td>
+<td>${escapeAttr(latestGradesByClass[name]??"")}</td>
+</tr>`;
+  }).join("");
+
+  const allClassesGradeRaw=latestGradesByClass["All Classes"]??latestGradesByClass["AllClasses"]??"";
+  const allClassesGrade=String(allClassesGradeRaw||"").trim()||formatGradeValue(totalGradeCount?totalGradePoints/totalGradeCount:NaN);
+
+  document.querySelector(".summary").innerHTML=`
+<table class="summary-table">
+<thead>
+<tr>
+<th>${formatSummaryHeaderLabel("Class")}</th>
+<th>${formatSummaryHeaderLabel("Todo")}</th>
+<th>${formatSummaryHeaderLabel("Following-Up")}</th>
+<th>${formatSummaryHeaderLabel("Canvas Incomplete")}</th>
+<th>${formatSummaryHeaderLabel("Unverified")}</th>
+<th>${formatSummaryHeaderLabel("Total")}</th>
+<th>${formatSummaryHeaderLabel("Grades")}</th>
+</tr>
+</thead>
+<tbody>
+${rowsHtml}
+<tr class="summary-total-row">
+<td>All Classes</td>
+<td>${pct(totals.andrewTodo,totals.summaryTotal)}</td>
+<td>${pct(totals.andrewFollowingUp,totals.summaryTotal)}</td>
+<td>${pct(totals.canvasIncomplete,totals.summaryTotal)}</td>
+<td>${pct(totals.unverified,totals.summaryTotal)}</td>
+<td>${totals.labelTotal}</td>
+<td>${allClassesGrade||"—"}</td>
+</tr>
+</tbody>
+</table>`;
+}
+  
+/* SUMMARY
+
+function updateSummary(){
+
+const today=new Date(); today.setHours(0,0,0,0);
+
+const classCounts={};
+
+getVisibleData().forEach(r=>{
+const className=String(r.Class||"Unassigned").trim()||"Unassigned";
+const isBeforeToday=Boolean(r.ParsedDate) && r.ParsedDate<today;
+const isVerified=String(r.Verified).toLowerCase()==="true";
+const andrewStatus=String(r.Andrew||"").trim().toLowerCase();
+
+if(!classCounts[className]){
+classCounts[className]={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0};
+}
+
+const counts=classCounts[className];
+counts.labelTotal++;
+
+if(isBeforeToday) counts.summaryTotal++;
+
+if(isBeforeToday && !isVerified) counts.unverified++;
+if(isBeforeToday && !isVerified && ![STATUS_SUBMITTED, STATUS_FOLLOWING_UP].map(status=>status.toLowerCase()).includes(andrewStatus)) counts.andrewTodo++;
+if(isBeforeToday && !isVerified && andrewStatus===STATUS_FOLLOWING_UP.toLowerCase()) counts.andrewFollowingUp++;
+if(isBeforeToday && !isVerified && !isCanvasComplete(r.Canvas)) counts.canvasIncomplete++;
+});
+
+const classNames=Object.keys(classCounts).sort((a,b)=>a.localeCompare(b));
+
+let totals={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0};
+
+function formatSummaryCell(count,total){
+const percent=total?Math.round((count/total)*100):0;
+return `${percent}% (${count} out of ${total})`;
+}
+
+const rowsHtml=classNames.map(className=>{
+const c=classCounts[className];
+
+totals.andrewTodo+=c.andrewTodo;
+totals.andrewFollowingUp+=c.andrewFollowingUp;
+totals.canvasIncomplete+=c.canvasIncomplete;
+totals.unverified+=c.unverified;
+totals.summaryTotal+=c.summaryTotal;
+totals.labelTotal+=c.labelTotal;
+
+return `
+<tr>
+<td>${className}</td>
+<td>${formatSummaryCell(c.andrewTodo,c.summaryTotal)}</td>
+<td>${formatSummaryCell(c.andrewFollowingUp,c.summaryTotal)}</td>
+<td>${formatSummaryCell(c.canvasIncomplete,c.summaryTotal)}</td>
+<td>${formatSummaryCell(c.unverified,c.summaryTotal)}</td>
+<td>${c.labelTotal}</td>
+</tr>`;
+}).join("");
+
+const summaryHtml=`
+<table class="summary-table">
+<thead>
+<tr>
+<th>Class</th>
+<th>Andrew Todo</th>
+<th>Andrew Following-Up</th>
+<th>Canvas Incomplete</th>
+<th>Unverified</th>
+<th>Total</th>
+</tr>
+</thead>
+<tbody>
+${rowsHtml}
+<tr class="summary-total-row">
+<td>All Classes</td>
+<td>${formatSummaryCell(totals.andrewTodo,totals.summaryTotal)}</td>
+<td>${formatSummaryCell(totals.andrewFollowingUp,totals.summaryTotal)}</td>
+<td>${formatSummaryCell(totals.canvasIncomplete,totals.summaryTotal)}</td>
+<td>${formatSummaryCell(totals.unverified,totals.summaryTotal)}</td>
+<td>${totals.labelTotal}</td>
+</tr>
+</tbody>
+</table>`;
+
+document.querySelector(".summary").innerHTML=summaryHtml;
+
+}*/
+
+/* FILTERS */
+
+function populateClassFilter(){
+const select=document.getElementById("classFilter");
+const classes=[...new Set(allData.map(r=>String(r.Class||"").trim()).filter(Boolean))]
+.sort((a,b)=>a.localeCompare(b));
+
+select.innerHTML='<option value="">All Classes</option>'+
+classes.map(c=>`<option value="${escapeAttr(c)}">${c}</option>`).join("");
+
+select.value=activeClassFilter;
+}
+
+function applyClassFilter(className){
+activeClassFilter=className;
+windowData=activeClassFilter
+?allData.filter(r=>String(r.Class||"").trim()===activeClassFilter)
+:allData;
+
+render();
+}
+
+/* GROUP */
+
+function applyHideVerified(checked){
+hideVerifiedRows=checked;
+render();
+}
+
+function applyHideFollowingUp(checked){
+hideFollowingUpRows=checked;
+render();
+}
+
+function applyHideCanvasIncomplete(checked){
+hideCanvasIncompleteRows=checked;
+render();
+}
+
+function applyHideCanvasComplete(checked){
+hideCanvasCompleteRows=checked;
+render();
+}
+
+function getVisibleData(){
+return windowData.filter(r=>{
+if(hideVerifiedRows && String(r.Verified)==="true") return false;
+if(hideFollowingUpRows && isAndrewFollowingUp(r.Andrew)) return false;
+
+const canvasComplete=isCanvasComplete(r.Canvas);
+if(hideCanvasIncompleteRows && !canvasComplete) return false;
+if(hideCanvasCompleteRows && canvasComplete) return false;
+
+return true;
+});
+}
+
+function groupByDate(data){
+const g={};
+data.forEach(r=>{
+if(!g[r.Date]) g[r.Date]=[];
+g[r.Date].push(r);
+});
+return g;
+}
+
+/* RENDER */
+
+function render(){
+
+const container=document.getElementById("content");
+
+const groups=groupByDate(getVisibleData());
+
+let html="";
+
+Object.keys(groups)
+.sort((a,b)=>parseMDY(a)-parseMDY(b))
+.forEach(date=>{
+
+const rows=groups[date];
+const groupClass=getGroupClass(rows);
+
+/* DESKTOP */
+
+let tableRows="";
+
+rows.forEach(row=>{
+
+const status=getRowStatusClass(row);
+
+tableRows+=`
+<tr class="${status}">
+<td>${row.Date}</td>
+<td>${row.Class||""}</td>
+<td>${row.Assignment||""}</td>
+<td>
+<textarea
+class="notes-input"
+rows="2"
+onchange="updateNotes('${row.UID}',this.value)">${escapeAttr(row.Notes)}</textarea>
+</td>
+
+<td>
+<select onchange="updateAndrew('${row.UID}',this.value)">
+<option></option>
+<option ${row.Andrew===STATUS_IN_PROGRESS?"selected":""}>In-Progress</option>
+<option ${row.Andrew===STATUS_FOLLOWING_UP?"selected":""}>Following-Up</option>
+<option ${row.Andrew==="Completed"?"selected":""}>Completed</option>
+<option ${row.Andrew===STATUS_SUBMITTED?"selected":""}>Submitted</option>
+</select>
+</td>
+
+<td>${row.Canvas||""}</td>
+
+<td>
+<input type="checkbox"
+${String(row.Verified)==="true"?"checked":""}
+onchange="updateCheckbox('${row.UID}','Verified',this.checked)">
+</td>
+</tr>
+`;
+
+});
+
+/* MOBILE */
+
+let mobileCards="";
+
+rows.forEach(row=>{
+
+const status=getRowStatusClass(row);
+
+mobileCards+=`
+<div class="card ${status}">
+
+<div><b>${row.Class||""}</b></div>
+<div>${row.Assignment||""}</div>
+
+<div>Canvas: ${row.Canvas||""}</div>
+
+<div style="margin-top:6px">
+<select onchange="updateAndrew('${row.UID}',this.value)">
+<option></option>
+<option ${row.Andrew===STATUS_IN_PROGRESS?"selected":""}>In-Progress</option>
+<option ${row.Andrew===STATUS_FOLLOWING_UP?"selected":""}>Following-Up</option>
+<option ${row.Andrew==="Completed"?"selected":""}>Completed</option>
+<option ${row.Andrew===STATUS_SUBMITTED?"selected":""}>Submitted</option>
+</select>
+</div>
+
+<div style="margin-top:6px">
+Verified
+<input type="checkbox"
+${String(row.Verified)==="true"?"checked":""}
+onchange="updateCheckbox('${row.UID}','Verified',this.checked)">
+</div>
+
+<div style="margin-top:6px">
+<b>Notes:</b>
+<textarea
+class="notes-input"
+rows="3"
+onchange="updateNotes('${row.UID}',this.value)">${escapeAttr(row.Notes)}</textarea>
+</div>
+
+</div>
+`;
+
+});
+
+html+=`
+
+<div class="desktop-view ${groupClass}">
+<h2>${date}</h2>
+
+<div class="table-wrapper">
+
+<table class="data-table">
+<thead>
+<tr>
+<th>Date</th>
+<th>Class</th>
+<th>Assignment</th>
+<th>Notes</th>
+<th>Andrew</th>
+<th>Canvas</th>
+<th>Verified</th>
+</tr>
+</thead>
+
+<tbody>
+${tableRows}
+</tbody>
+
+</table>
+</div>
+</div>
+
+<div class="mobile-view ${groupClass}">
+
+<div class="mobile-date"
+onclick="this.nextElementSibling.style.display =
+this.nextElementSibling.style.display==='block'?'none':'block'">
+
+${date}
+
+</div>
+
+<div style="display:none">
+
+${mobileCards}
+
+</div>
+
+</div>
+`;
+
+});
+
+container.innerHTML=html;
+
+updateSummary();
+
+}
+
+/* ---------- SAVE (UPDATED) ---------- */
+
+function triggerSave(row){
+
+  const summaryRow = buildCurrentSummaryRow();
+
+  fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({
+      row: row,
+      summary: summaryRow
+    })
+  });
+
+}
+
+/* SAVE
+
+function triggerSave(row){
+
+fetch(API_URL,{
+method:"POST",
+body:JSON.stringify(row)
+});
+
+}*/
+
+/* UPDATE */
+
+function updateAndrew(uid,value){
+
+const row=windowData.find(r=>r.UID===uid);
+if(!row) return;
+
+row.Andrew=value;
+
+triggerSave(row);
+
+render();
+
+}
+
+function updateCheckbox(uid,col,val){
+
+const row=windowData.find(r=>r.UID===uid);
+if(!row) return;
+
+row[col]=val?"true":"false";
+
+triggerSave(row);
+
+render();
+
+}
+
+function updateNotes(uid,value){
+
+const row=windowData.find(r=>r.UID===uid);
+if(!row) return;
+
+row.Notes=value;
+
+triggerSave(row);
+
+render();
+
+}
+
+/* LOAD */
+
+async function loadData(){
+
+const content=document.getElementById("content");
+
+const cached=localStorage.getItem("hwTrackerCache");
+
+if(cached){
+
+try{
+const json=JSON.parse(cached);
+useData(json,true);
+}catch{}
+
+}
+
+try{
+
+const res=await fetch(API_URL,{cache:"no-store"});
+const json=await res.json();
+
+localStorage.setItem("hwTrackerCache",JSON.stringify(json));
+
+useData(json,false);
+
+}catch(e){
+
+if(!cached)
+content.innerHTML="Failed to load data";
+
+}
+
+}
+
+function useData(json,fromCache){
+
+const raw=Array.isArray(json.data)?json.data:[];
+latestGradesByClass=(json && typeof json.latestGrades==="object" && json.latestGrades!==null)
+?json.latestGrades
+:{};
+
+allData=raw.map((r,i)=>{
+
+const formatted=formatDate(r.Date);
+
+return {
+...r,
+Date:formatted,
+ParsedDate:parseMDY(formatted),
+UID:String(r.UID??i)
+};
+
+});
+
+if(activeClassFilter && !allData.some(r=>String(r.Class||"").trim()===activeClassFilter))
+activeClassFilter="";
+
+populateClassFilter();
+
+windowData=activeClassFilter
+?allData.filter(r=>String(r.Class||"").trim()===activeClassFilter)
+:allData;
+
+headers=Object.keys(allData[0]||{});
+
+document.getElementById("versionLabel").textContent=
+`Dashboard v${VERSION} | API ${json.apiVersion||"?"}`;
+
+const now=new Date();
+
+document.getElementById("lastUpdated").textContent=
+(fromCache?"Cached ":"Updated ")+
+now.toLocaleDateString()+" "+
+now.toLocaleTimeString();
+
+render();
+
+}
+
+/* INIT */
+
+loadData();
+
+</script>
+</body>
+</html>
