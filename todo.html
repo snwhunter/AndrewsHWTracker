@@ -7,8 +7,9 @@
 <style>
 body { font-family: Arial, sans-serif; margin:0; padding:12px; }
 h1 { margin: 0 0 10px 0; }
+h2 { margin: 16px 0 8px 0; }
 #meta { margin-bottom: 10px; font-size: 14px; }
-.table-wrapper { overflow-x:auto; }
+.table-wrapper { overflow-x:auto; margin-bottom: 14px; }
 table { border-collapse: collapse; width: 100%; table-layout: fixed; }
 th, td { border:1px solid #ddd; padding:6px; vertical-align: top; }
 th { background:#f0f0f0; position: sticky; top: 0; }
@@ -30,16 +31,19 @@ th:nth-child(7), td:nth-child(7) { width:auto; }
 <body>
 <h1>Todo List</h1>
 <div id="meta">Loading...</div>
-<div class="table-wrapper" id="content"></div>
+<div id="content"></div>
 
 <script>
-const VERSION = "1.1.0";
+const VERSION = "1.2.0";
 const STATUS_IN_PROGRESS = "In-Progress";
+const STATUS_FOLLOWING_UP = "Following-up";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 const STORAGE_ORDER_KEY = "todoOrderByUid";
+const STORAGE_FOLLOWUP_ORDER_KEY = "todoFollowUpOrderByUid";
 
 let allData = [];
-let visibleRows = [];
+let inProgressRows = [];
+let followingUpRows = [];
 
 function parseMDY(s){
   if(!s) return null;
@@ -53,33 +57,32 @@ function formatDate(iso){
   return `${d.getMonth()+1}/${d.getDate()}/${String(d.getFullYear()).slice(-2)}`;
 }
 
-
-function getOrder(){
+function getOrder(storageKey){
   try {
-    const arr = JSON.parse(localStorage.getItem(STORAGE_ORDER_KEY) || "[]");
+    const arr = JSON.parse(localStorage.getItem(storageKey) || "[]");
     return Array.isArray(arr) ? arr.map(String) : [];
   } catch {
     return [];
   }
 }
 
-function saveOrder(arr){
-  localStorage.setItem(STORAGE_ORDER_KEY, JSON.stringify(arr.map(String)));
+function saveOrder(storageKey, arr){
+  localStorage.setItem(storageKey, JSON.stringify(arr.map(String)));
 }
 
-function buildOrderIndex(order, rows){
+function buildOrderIndex(storageKey, rows){
   const orderSet = new Set(rows.map(r=>r.UID));
-  const cleaned = order.filter(uid=>orderSet.has(uid));
+  const cleaned = getOrder(storageKey).filter(uid=>orderSet.has(uid));
   const missing = rows.map(r=>r.UID).filter(uid=>!cleaned.includes(uid));
   const finalOrder = cleaned.concat(missing);
-  saveOrder(finalOrder);
+  saveOrder(storageKey, finalOrder);
   const map = new Map();
   finalOrder.forEach((uid, idx)=>map.set(uid, idx));
   return map;
 }
 
-function sortRows(rows){
-  const orderIndex = buildOrderIndex(getOrder(), rows);
+function sortRows(rows, storageKey){
+  const orderIndex = buildOrderIndex(storageKey, rows);
 
   return [...rows].sort((a,b)=>{
     const manual = (orderIndex.get(a.UID) ?? Number.MAX_SAFE_INTEGER) - (orderIndex.get(b.UID) ?? Number.MAX_SAFE_INTEGER);
@@ -93,8 +96,8 @@ function sortRows(rows){
   });
 }
 
-function moveUid(uid, mode){
-  const order = getOrder().filter(id=>visibleRows.some(r=>r.UID===id));
+function moveUid(uid, mode, storageKey, rowSet){
+  const order = getOrder(storageKey).filter(id=>rowSet.some(r=>r.UID===id));
   const idx = order.indexOf(uid);
   if(idx===-1) return;
 
@@ -110,27 +113,24 @@ function moveUid(uid, mode){
     order.push(uid);
   }
 
-  const allKnown = getOrder();
-  const remainder = allKnown.filter(id=>!visibleRows.some(r=>r.UID===id));
-  saveOrder(order.concat(remainder));
+  const allKnown = getOrder(storageKey);
+  const remainder = allKnown.filter(id=>!rowSet.some(r=>r.UID===id));
+  saveOrder(storageKey, order.concat(remainder));
   render();
 }
 
-function render(){
-  const rows = sortRows(visibleRows);
-  document.getElementById("meta").textContent = `Todo List v${VERSION} • ${rows.length} in-progress rows`;
-
-  const body = rows.map(r=>`
+function renderTable(rows, storageKey){
+  const sortedRows = sortRows(rows, storageKey);
+  const body = sortedRows.map(r=>`
     <tr>
       <td>
         <div class="move-controls">
-          <button onclick="moveUid('${r.UID}','top')" title="Move top">⏫</button>
-          <button onclick="moveUid('${r.UID}','up')" title="Move up">↑</button>
-          <button onclick="moveUid('${r.UID}','down')" title="Move down">↓</button>
-          <button onclick="moveUid('${r.UID}','bottom')" title="Move bottom">⏬</button>
+          <button onclick="moveUid('${r.UID}','top','${storageKey}',${storageKey===STORAGE_ORDER_KEY ? 'inProgressRows' : 'followingUpRows'})" title="Move top">⏫</button>
+          <button onclick="moveUid('${r.UID}','up','${storageKey}',${storageKey===STORAGE_ORDER_KEY ? 'inProgressRows' : 'followingUpRows'})" title="Move up">↑</button>
+          <button onclick="moveUid('${r.UID}','down','${storageKey}',${storageKey===STORAGE_ORDER_KEY ? 'inProgressRows' : 'followingUpRows'})" title="Move down">↓</button>
+          <button onclick="moveUid('${r.UID}','bottom','${storageKey}',${storageKey===STORAGE_ORDER_KEY ? 'inProgressRows' : 'followingUpRows'})" title="Move bottom">⏬</button>
         </div>
       </td>
-
       <td>${r.Date||""}</td>
       <td>${r.Class||""}</td>
       <td>${r.Assignment||""}</td>
@@ -140,21 +140,34 @@ function render(){
     </tr>
   `).join("");
 
+  return `
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Move</th>
+            <th>Date</th>
+            <th>Class</th>
+            <th>Assignment</th>
+            <th>Andrew</th>
+            <th>Canvas</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function render(){
+  document.getElementById("meta").textContent = `Todo List v${VERSION} • ${inProgressRows.length} in-progress • ${followingUpRows.length} following-up`;
+
   document.getElementById("content").innerHTML = `
-    <table>
-      <thead>
-        <tr>
-          <th>Move</th>
-          <th>Date</th>
-          <th>Class</th>
-          <th>Assignment</th>
-          <th>Andrew</th>
-          <th>Canvas</th>
-          <th>Notes</th>
-        </tr>
-      </thead>
-      <tbody>${body}</tbody>
-    </table>
+    <h2>Andrew In-Progress</h2>
+    ${renderTable(inProgressRows, STORAGE_ORDER_KEY)}
+    <h2>Andrew Following-up</h2>
+    ${renderTable(followingUpRows, STORAGE_FOLLOWUP_ORDER_KEY)}
   `;
 }
 
@@ -181,7 +194,9 @@ function useData(json, fromCache){
     return { ...r, Date: formatted, ParsedDate: parseMDY(formatted), UID: String(r.UID??i) };
   });
 
-  visibleRows = allData.filter(r=>String(r.Andrew||"").trim()===STATUS_IN_PROGRESS);
+  inProgressRows = allData.filter(r=>String(r.Andrew||"").trim()===STATUS_IN_PROGRESS);
+  followingUpRows = allData.filter(r=>String(r.Andrew||"").trim()===STATUS_FOLLOWING_UP);
+
   if(!fromCache){
     const t = new Date();
     document.getElementById("meta").textContent = `Todo List v${VERSION} • Updated ${t.toLocaleString()}`;
