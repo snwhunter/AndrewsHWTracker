@@ -18,8 +18,7 @@ th { background:#f0f0f0; position: sticky; top: 0; }
 select, button { border-radius:6px; }
 input[type="checkbox"] { width:18px; height:18px; }
 .notes-cell { white-space: pre-wrap; word-break: break-word; }
-.notes-editor { width: 100%; min-height: 70px; box-sizing: border-box; font-family: inherit; resize: vertical; }
-.notes-save-btn { margin-top: 6px; cursor: pointer; }
+.notes-editor { width: 100%; min-height: 2.1em; line-height: 1.2; box-sizing: border-box; font-family: inherit; resize: vertical; padding: 4px 6px; }
 
 
 th:nth-child(1), td:nth-child(1) { width:120px; text-align:center; }
@@ -143,8 +142,7 @@ function renderTable(rows, storageKey){
         ${renderActionButtons(r, storageKey)}
       </td>
       <td class="notes-cell">
-        <textarea class="notes-editor" id="notes-${r.UID}" placeholder="Add notes...">${escapeHtml(r.Notes||"")}</textarea>
-        <button class="notes-save-btn" onclick="saveNotes('${r.UID}')">Save Notes</button>
+        <textarea class="notes-editor" id="notes-${r.UID}" placeholder="Add notes..." onkeydown="handleNotesKeydown(event, '${r.UID}')">${escapeHtml(r.Notes||"")}</textarea>
       </td>
     </tr>
   `).join("");
@@ -199,6 +197,13 @@ async function saveNotes(uid){
     await loadData();
   } catch (e) {
     document.getElementById("meta").textContent = "Failed to update notes";
+  }
+}
+
+function handleNotesKeydown(event, uid){
+  if(event.key === "Enter" && !event.shiftKey){
+    event.preventDefault();
+    saveNotes(uid);
   }
 }
 
