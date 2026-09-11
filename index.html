@@ -117,6 +117,12 @@ type="checkbox"
 id="hideCanvasCompleteToggle"
 onchange="applyHideCanvasComplete(this.checked)">
 
+<label for="hideWithoutDatesToggle"><b>Hide Without Dates</b></label>
+<input
+type="checkbox"
+id="hideWithoutDatesToggle"
+onchange="applyHideWithoutDates(this.checked)">
+
 <a href="todo.html" target="_blank" rel="noopener noreferrer"><b>Todo Priority</b></a>
 </div>
 </header>
@@ -126,7 +132,7 @@ onchange="applyHideCanvasComplete(this.checked)">
 
 <script>
 
-const VERSION="5.6.6";
+const VERSION="5.6.7";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 
 const STATUS_IN_PROGRESS="In-Progress";
@@ -142,6 +148,7 @@ let hideVerifiedRows=true;
 let hideFollowingUpRows=false;
 let hideCanvasIncompleteRows=false;
 let hideCanvasCompleteRows=false;
+let hideWithoutDatesRows=false;
 
 /* DATE PARSER */
 
@@ -191,7 +198,7 @@ return value.trim().startsWith("[") || canvasContainsSubmitted(value);
 
 function isRowPastDue(row){
 const t=new Date(); t.setHours(0,0,0,0);
-return row.ParsedDate<t &&
+return Boolean(row.ParsedDate) && row.ParsedDate<t &&
 (!isAndrewDone(row.Andrew) ||
 !isCanvasComplete(row.Canvas) ||
 String(row.Verified)!=="true");
@@ -566,6 +573,11 @@ hideCanvasCompleteRows=checked;
 render();
 }
 
+function applyHideWithoutDates(checked){
+hideWithoutDatesRows=checked;
+render();
+}
+
 function getVisibleData(){
 return windowData.filter(r=>{
 if(hideVerifiedRows && String(r.Verified)==="true") return false;
@@ -574,6 +586,7 @@ if(hideFollowingUpRows && isAndrewFollowingUp(r.Andrew)) return false;
 const canvasComplete=isCanvasComplete(r.Canvas);
 if(hideCanvasIncompleteRows && !canvasComplete) return false;
 if(hideCanvasCompleteRows && canvasComplete) return false;
+if(hideWithoutDatesRows && !r.ParsedDate) return false;
 
 return true;
 });
@@ -588,6 +601,16 @@ g[r.Date].push(r);
 return g;
 }
 
+function compareDateGroups(a,b){
+const dateA=parseMDY(a);
+const dateB=parseMDY(b);
+
+if(!dateA && !dateB) return 0;
+if(!dateA) return 1;
+if(!dateB) return -1;
+return dateA-dateB;
+}
+
 /* RENDER */
 
 function render(){
@@ -599,7 +622,7 @@ const groups=groupByDate(getVisibleData());
 let html="";
 
 Object.keys(groups)
-.sort((a,b)=>parseMDY(a)-parseMDY(b))
+.sort(compareDateGroups)
 .forEach(date=>{
 
 const rows=groups[date];
