@@ -13,6 +13,7 @@ Andrew's Homework Tracker is a lightweight, browser-based dashboard for reviewin
 - Groups assignments by date in desktop and mobile layouts.
 - Supports class, verification, follow-up, Canvas completion, and missing-date filters.
 - Allows Andrew status, verification, and notes to be updated through the API.
+- Supports an `Images` data field containing a JSON array of Google Drive URLs; capture/view controls are rendered inside the Notes area and launch Smart Capturer with the assignment UID and context.
 - Uses row and group colors to communicate workflow status; assignments without dates are neutral white and appear after dated assignments.
 
 ### Todo Priority (`todo.html`)
@@ -24,6 +25,7 @@ Andrew's Homework Tracker is a lightweight, browser-based dashboard for reviewin
 
 ### Data and Automation
 
+- The Google Sheet `data` tab may include an `Images` column. Its value is a JSON array of Google Drive URLs associated with the assignment UID; Canvas/Odysseyware synchronization must preserve this field.
 - `data.csv` and the archived CSV files provide local data snapshots.
 - `.github/workflows/update-csv.yml` accepts repository-dispatch updates and commits a refreshed `data.csv`.
 - `.github/workflows/pr-preview.yml` publishes a preview for pull requests.
