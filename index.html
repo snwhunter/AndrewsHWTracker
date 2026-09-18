@@ -63,6 +63,11 @@ cursor:pointer;
 select{ padding:4px; border-radius:6px; }
 input[type="checkbox"]{ width:20px;height:20px;}
 .notes-input{ width:100%; box-sizing:border-box; resize:vertical; min-height:40px; font-family:inherit; }
+.notes-wrap{ display:flex; align-items:flex-start; gap:6px; }
+.notes-wrap .notes-input{ flex:1; min-width:0; }
+.image-actions{ display:flex; gap:4px; flex:0 0 auto; }
+.image-action-btn{ cursor:pointer; min-width:34px; min-height:34px; padding:3px 6px; border:1px solid #bbb; border-radius:6px; background:#fff; font-size:17px; line-height:1; }
+.image-action-btn:hover{ background:#f0f0f0; }
 
 @media (max-width:768px){
 .desktop-view{display:none;}
@@ -132,8 +137,9 @@ onchange="applyHideWithoutDates(this.checked)">
 
 <script>
 
-const VERSION="5.6.7";
+const VERSION="5.7.0";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
+const SMART_CAPTURER_URL="https://smart-capturer-1025680092220.us-west1.run.app/capture";
 
 const STATUS_IN_PROGRESS="In-Progress";
 const STATUS_SUBMITTED="Submitted";
@@ -170,6 +176,53 @@ return String(v||"")
 .replace(/"/g,"&quot;")
 .replace(/</g,"&lt;")
 .replace(/>/g,"&gt;");
+}
+
+function getImageLinks(value){
+  if(Array.isArray(value)) return value.map(String).map(v=>v.trim()).filter(Boolean);
+  const raw=String(value||"").trim();
+  if(!raw) return [];
+  try{
+    const parsed=JSON.parse(raw);
+    if(Array.isArray(parsed)) return parsed.map(String).map(v=>v.trim()).filter(Boolean);
+  }catch{}
+  return raw.split(/\r?\n|\s*,\s*/).map(v=>v.trim()).filter(v=>/^https?:\/\//i.test(v));
+}
+
+function captureHomeworkImage(row){
+  const params=new URLSearchParams({
+    assignment: String(row.Assignment||"Homework"),
+    assignment_id: String(row.UID||""),
+    source: "AndrewsHW Tracker",
+    category: "Homework",
+    title: String(row.Assignment||"Homework")
+  });
+  if(row.Class) params.set("class", String(row.Class));
+  window.open(`${SMART_CAPTURER_URL}?${params.toString()}`,"_blank","noopener,noreferrer");
+}
+
+function viewHomeworkImages(row){
+  const links=getImageLinks(row.Images);
+  if(!links.length) return;
+  if(links.length===1){
+    window.open(links[0],"_blank","noopener,noreferrer");
+    return;
+  }
+
+  const gallery=window.open("","_blank","noopener,noreferrer");
+  if(!gallery) return;
+  const items=links.map((url,i)=>`<li style="margin:12px 0"><a href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer">Image ${i+1}</a></li>`).join("");
+  gallery.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Homework Images</title></head><body style="font-family:Arial,sans-serif;padding:20px"><h2>Homework Images</h2><ol>${items}</ol></body></html>`);
+  gallery.document.close();
+}
+
+function imageActionButtons(row){
+  const uid=escapeAttr(row.UID);
+  const links=getImageLinks(row.Images);
+  return `<div class="image-actions">
+    <button class="image-action-btn" type="button" onclick="captureHomeworkImage(allData.find(r=>r.UID==='${uid}')||{})" title="Capture image" aria-label="Capture image">📷</button>
+    ${links.length ? `<button class="image-action-btn" type="button" onclick="viewHomeworkImages(allData.find(r=>r.UID==='${uid}')||{})" title="View ${links.length} image${links.length===1?"":"s"}" aria-label="View images">👁</button>` : ""}
+  </div>`;
 }
 
 /* STATUS */
@@ -642,10 +695,13 @@ tableRows+=`
 <td>${row.Class||""}</td>
 <td>${row.Assignment||""}</td>
 <td>
+<div class="notes-wrap">
 <textarea
 class="notes-input"
 rows="2"
 onchange="updateNotes('${row.UID}',this.value)">${escapeAttr(row.Notes)}</textarea>
+${imageActionButtons(row)}
+</div>
 </td>
 
 <td>
@@ -705,10 +761,13 @@ onchange="updateCheckbox('${row.UID}','Verified',this.checked)">
 
 <div style="margin-top:6px">
 <b>Notes:</b>
+<div class="notes-wrap">
 <textarea
 class="notes-input"
 rows="3"
 onchange="updateNotes('${row.UID}',this.value)">${escapeAttr(row.Notes)}</textarea>
+${imageActionButtons(row)}
+</div>
 </div>
 
 </div>
