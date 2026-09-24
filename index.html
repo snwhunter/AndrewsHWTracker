@@ -249,6 +249,11 @@ const value=String(v||"").toLowerCase();
 return value.trim().startsWith("[") || canvasContainsSubmitted(value);
 }
 
+function isCanvasGradedAtLeast80(v){
+const match=String(v||"").match(/\[\s*Graded\s*>?\s*(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)\s*\]/i);
+return Boolean(match) && Number(match[2])>0 && Number(match[1])/Number(match[2])>=0.8;
+}
+
 function isRowPastDue(row){
 const t=new Date(); t.setHours(0,0,0,0);
 return Boolean(row.ParsedDate) && row.ParsedDate<t &&
@@ -258,7 +263,7 @@ String(row.Verified)!=="true");
 }
 
 function getRowStatusRank(r){
-if(String(r.Verified)==="true") return 5;
+if(String(r.Verified)==="true" || isCanvasGradedAtLeast80(r.Canvas)) return 5;
 if(canvasContainsSubmitted(r.Canvas)) return 4;
 if(String(r.Andrew||"").toLowerCase()===STATUS_FOLLOWING_UP.toLowerCase()) return 3;
 if(String(r.Andrew||"").toLowerCase()===STATUS_SUBMITTED.toLowerCase()) return 2;
