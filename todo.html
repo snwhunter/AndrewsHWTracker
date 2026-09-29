@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Todo List - Andrew's HW Tracker</title>
+<title>Todo List - HW Tracker</title>
 <style>
 body { font-family: Arial, sans-serif; margin:0; padding:12px; }
 h1 { margin: 0 0 10px 0; }
@@ -34,18 +34,35 @@ th:nth-child(7), td:nth-child(7) { width:auto; }
 </style>
 </head>
 <body>
-<h1>Todo List</h1>
+<h1 id="todoTitle">Todo List</h1>
 <div id="meta">Loading...</div>
 <div id="content"></div>
 
 <script>
-const VERSION = "1.4.1";
+const VERSION = "1.5.0";
 const STATUS_IN_PROGRESS = "In-Progress";
 const STATUS_FOLLOWING_UP = "Following-Up";
 const STATUS_SUBMITTED = "Submitted";
-const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
-const STORAGE_ORDER_KEY = "todoOrderByUid";
-const STORAGE_FOLLOWUP_ORDER_KEY = "todoFollowUpOrderByUid";
+const STUDENTS={
+  andrew:{
+    name:"Andrew",
+    apiUrl:"https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec"
+  },
+  roper:{
+    name:"Roper",
+    apiUrl:""
+  }
+};
+const studentParam=new URLSearchParams(window.location.search).get("student");
+const STUDENT_ID=String(studentParam||"andrew").trim().toLowerCase();
+const STUDENT=STUDENTS[STUDENT_ID]||STUDENTS.andrew;
+const API_URL=STUDENT.apiUrl;
+const CACHE_KEY=`hwTrackerCache:${STUDENT_ID}`;
+const STORAGE_ORDER_KEY=`todoOrderByUid:${STUDENT_ID}`;
+const STORAGE_FOLLOWUP_ORDER_KEY=`todoFollowUpOrderByUid:${STUDENT_ID}`;
+
+document.title=`Todo List - ${STUDENT.name}'s HW Tracker`;
+document.getElementById("todoTitle").textContent=`${STUDENT.name}'s Todo List`;
 
 let allData = [];
 let inProgressRows = [];
@@ -262,7 +279,12 @@ function render(){
 }
 
 async function loadData(){
-  const cached=localStorage.getItem("hwTrackerCache");
+  if(!API_URL){
+    document.getElementById("meta").textContent=`No Apps Script URL is configured yet for ${STUDENT.name}.`;
+    return;
+  }
+
+  const cached=localStorage.getItem(CACHE_KEY);
   if(cached){
     try { useData(JSON.parse(cached), true); } catch {}
   }
@@ -270,7 +292,7 @@ async function loadData(){
   try {
     const res=await fetch(API_URL,{cache:"no-store"});
     const json=await res.json();
-    localStorage.setItem("hwTrackerCache",JSON.stringify(json));
+    localStorage.setItem(CACHE_KEY,JSON.stringify(json));
     useData(json, false);
   } catch (e) {
     if(!cached) document.getElementById("meta").textContent = "Failed to load data";
