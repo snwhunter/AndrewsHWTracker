@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Andrew's HW Dashboard</title>
+<title>HW Dashboard</title>
 
 <style>
 body { font-family: Arial, sans-serif; margin:0; display:flex; flex-direction:column; height:100vh; }
@@ -83,7 +83,7 @@ input[type="checkbox"]{ width:20px;height:20px;}
 <body>
 
 <header>
-<h1>Andrew's HW Dashboard</h1>
+<h1 id="dashboardTitle">HW Dashboard</h1>
 
 <div id="header-info">
 <div id="versionLabel">Dashboard: ? | API: ?</div>
@@ -128,7 +128,7 @@ type="checkbox"
 id="hideWithoutDatesToggle"
 onchange="applyHideWithoutDates(this.checked)">
 
-<a href="todo.html" target="_blank" rel="noopener noreferrer"><b>Todo Priority</b></a>
+<a id="todoLink" href="todo.html" target="_blank" rel="noopener noreferrer"><b>Todo Priority</b></a>
 </div>
 </header>
 
@@ -137,8 +137,26 @@ onchange="applyHideWithoutDates(this.checked)">
 
 <script>
 
-const VERSION="5.7.2";
-const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
+const VERSION="5.8.0";
+const STUDENTS={
+  andrew:{
+    name:"Andrew",
+    apiUrl:"https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec"
+  },
+  roper:{
+    name:"Roper",
+    apiUrl:""
+  }
+};
+const studentParam=new URLSearchParams(window.location.search).get("student");
+const STUDENT_ID=String(studentParam||"andrew").trim().toLowerCase();
+const STUDENT=STUDENTS[STUDENT_ID]||STUDENTS.andrew;
+const API_URL=STUDENT.apiUrl;
+const CACHE_KEY=`hwTrackerCache:${STUDENT_ID}`;
+
+document.title=`${STUDENT.name}'s HW Dashboard`;
+document.getElementById("dashboardTitle").textContent=`${STUDENT.name}'s HW Dashboard`;
+document.getElementById("todoLink").href=`todo.html?student=${encodeURIComponent(STUDENT_ID)}`;
 const SMART_CAPTURER_URL="https://smart-capturer-1025680092220.us-west1.run.app/capture";
 
 const STATUS_IN_PROGRESS="In-Progress";
@@ -926,7 +944,12 @@ async function loadData(){
 
 const content=document.getElementById("content");
 
-const cached=localStorage.getItem("hwTrackerCache");
+if(!API_URL){
+  content.innerHTML=`No Apps Script URL is configured yet for ${STUDENT.name}.`;
+  return;
+}
+
+const cached=localStorage.getItem(CACHE_KEY);
 
 if(cached){
 
@@ -942,7 +965,7 @@ try{
 const res=await fetch(API_URL,{cache:"no-store"});
 const json=await res.json();
 
-localStorage.setItem("hwTrackerCache",JSON.stringify(json));
+localStorage.setItem(CACHE_KEY,JSON.stringify(json));
 
 useData(json,false);
 
