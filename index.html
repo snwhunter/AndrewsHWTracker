@@ -137,13 +137,31 @@ onchange="applyHideWithoutDates(this.checked)">
 
 <script>
 
-const VERSION="5.7.1";
+const VERSION="5.7.2";
 const API_URL="https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec";
 const SMART_CAPTURER_URL="https://smart-capturer-1025680092220.us-west1.run.app/capture";
 
 const STATUS_IN_PROGRESS="In-Progress";
 const STATUS_SUBMITTED="Submitted";
 const STATUS_FOLLOWING_UP="Following-Up";
+
+const CLASS_ORDER=[
+  "APGov-Perley-S1",
+  "CulArts-Sass-S1",
+  "Span5-Dickerson-S1",
+  "DiffCalc-Zimmers-S1",
+  "SenLit-Jordan-S1"
+];
+
+function sortClassNames(names){
+  const order=new Map(CLASS_ORDER.map((name,index)=>[name,index]));
+  return [...names].sort((a,b)=>{
+    const ai=order.has(a)?order.get(a):Number.MAX_SAFE_INTEGER;
+    const bi=order.has(b)?order.get(b):Number.MAX_SAFE_INTEGER;
+    if(ai!==bi) return ai-bi;
+    return a.localeCompare(b);
+  });
+}
   
 let allData=[];
 let windowData=[];
@@ -375,7 +393,7 @@ function buildCurrentSummaryRow(){
   );
 
   // PER CLASS
-  Object.keys(classCounts).sort().forEach(name=>{
+  sortClassNames(Object.keys(classCounts)).forEach(name=>{
     const c=classCounts[name];
     row.push(
       name,
@@ -419,7 +437,7 @@ function updateSummary(){
     if(isBeforeToday && !isVerified && !isCanvasComplete(r.Canvas)) c.canvasIncomplete++;
   });
 
-  const classNames=Object.keys(classCounts).sort((a,b)=>a.localeCompare(b));
+  const classNames=sortClassNames(Object.keys(classCounts));
 
   let totals={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0};
   let totalGradePoints=0;
@@ -476,7 +494,7 @@ function updateSummary(){
 <thead>
 <tr>
 <th>${formatSummaryHeaderLabel("Class")}</th>
-<th>${formatSummaryHeaderLabel("Todo")}</th>
+<th>${formatSummaryHeaderLabel("Missing")}</th>
 <th>${formatSummaryHeaderLabel("Following-Up")}</th>
 <th>${formatSummaryHeaderLabel("Canvas Incomplete")}</th>
 <th>${formatSummaryHeaderLabel("Unverified")}</th>
@@ -591,8 +609,7 @@ document.querySelector(".summary").innerHTML=summaryHtml;
 
 function populateClassFilter(){
 const select=document.getElementById("classFilter");
-const classes=[...new Set(allData.map(r=>String(r.Class||"").trim()).filter(Boolean))]
-.sort((a,b)=>a.localeCompare(b));
+const classes=sortClassNames([...new Set(allData.map(r=>String(r.Class||"").trim()).filter(Boolean))]);
 
 select.innerHTML='<option value="">All Classes</option>'+
 classes.map(c=>`<option value="${escapeAttr(c)}">${c}</option>`).join("");
