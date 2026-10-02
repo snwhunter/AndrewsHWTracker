@@ -39,27 +39,67 @@ th:nth-child(7), td:nth-child(7) { width:auto; }
 <div id="content"></div>
 
 <script>
-const VERSION = "1.5.0";
+const VERSION = "1.6.0";
 const STATUS_IN_PROGRESS = "In-Progress";
 const STATUS_FOLLOWING_UP = "Following-Up";
 const STATUS_SUBMITTED = "Submitted";
 const STUDENTS={
-  andrew:{
+  "0001":{
+    serial:"0001",
     name:"Andrew",
+    accessKey:"0001",
     apiUrl:"https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec"
   },
-  roper:{
+  "0002":{
+    serial:"0002",
     name:"Roper",
+    accessKey:"0002",
     apiUrl:"https://script.google.com/macros/s/AKfycbzz3dn1uvFfq0VYMjJ5Xq9fIzUOGMBJfVrIgMAEciBRxzx1r1VbIu-0mJa4XgMJ0TYIOw/exec"
   }
 };
-const studentParam=new URLSearchParams(window.location.search).get("student");
-const STUDENT_ID=String(studentParam||"andrew").trim().toLowerCase();
-const STUDENT=STUDENTS[STUDENT_ID]||STUDENTS.andrew;
+const STUDENT_ALIASES={andrew:"0001",roper:"0002"};
+const params=new URLSearchParams(window.location.search);
+const rawStudent=String(params.get("Student")||params.get("student")||"0001").trim().toLowerCase();
+const STUDENT_ID=STUDENTS[rawStudent]?rawStudent:(STUDENT_ALIASES[rawStudent]||"0001");
+const STUDENT=STUDENTS[STUDENT_ID];
 const API_URL=STUDENT.apiUrl;
 const CACHE_KEY=`hwTrackerCache:${STUDENT_ID}`;
+const ACCESS_KEY_CACHE=`hwTrackerAccess:${STUDENT_ID}`;
 const STORAGE_ORDER_KEY=`todoOrderByUid:${STUDENT_ID}`;
 const STORAGE_FOLLOWUP_ORDER_KEY=`todoFollowUpOrderByUid:${STUDENT_ID}`;
+let STUDENT_COLUMN=STUDENT.name;
+
+if(params.get("Student")!==STUDENT_ID || params.has("student")){
+  const canonical=new URL(window.location.href);
+  canonical.searchParams.delete("student");
+  canonical.searchParams.set("Student",STUDENT_ID);
+  window.history.replaceState({}, "", canonical);
+}
+
+function ensureStudentAccess(){
+  const saved=localStorage.getItem(ACCESS_KEY_CACHE);
+  if(saved===STUDENT.accessKey) return true;
+
+  const entered=window.prompt(`Enter the 4-digit access key for ${STUDENT.name} (${STUDENT_ID})`);
+  if(entered===null) return false;
+
+  const key=String(entered).trim();
+  if(!/^\d{4}$/.test(key) || key!==STUDENT.accessKey){
+    localStorage.removeItem(ACCESS_KEY_CACHE);
+    return false;
+  }
+
+  localStorage.setItem(ACCESS_KEY_CACHE,key);
+  return true;
+}
+
+function getStudentStatus(row){
+  return row?.[STUDENT_COLUMN] ?? row?.Student ?? "";
+}
+
+function setStudentStatus(row,value){
+  row[STUDENT_COLUMN]=value;
+}
 
 document.title=`Todo List - ${STUDENT.name}'s HW Tracker`;
 document.getElementById("todoTitle").textContent=`${STUDENT.name}'s Todo List`;
@@ -250,7 +290,7 @@ async function updateAndrewStatus(uid, status){
   const row = allData.find(r=>r.UID===uid);
   if(!row) return;
 
-  row.Andrew = status;
+  setStudentStatus(row,status);
 
   const payloadRow = { ...row };
   delete payloadRow.ParsedDate;
@@ -271,14 +311,19 @@ function render(){
   document.getElementById("meta").textContent = `Todo List v${VERSION} • ${inProgressRows.length} in-progress • ${followingUpRows.length} Following-Up`;
 
   document.getElementById("content").innerHTML = `
-    <h2>Andrew In-Progress</h2>
+    <h2>${STUDENT.name} In-Progress</h2>
     ${renderTable(inProgressRows, STORAGE_ORDER_KEY)}
-    <h2>Andrew Following-Up</h2>
+    <h2>${STUDENT.name} Following-Up</h2>
     ${renderTable(followingUpRows, STORAGE_FOLLOWUP_ORDER_KEY)}
   `;
 }
 
 async function loadData(){
+  if(!ensureStudentAccess()){
+    document.getElementById("meta").textContent=`Access key required for ${STUDENT.name} (${STUDENT_ID}). Refresh to try again.`;
+    return;
+  }
+
   if(!API_URL){
     document.getElementById("meta").textContent=`No Apps Script URL is configured yet for ${STUDENT.name}.`;
     return;
@@ -301,6 +346,7 @@ async function loadData(){
 
 function useData(json, fromCache){
   const raw = Array.isArray(json.data)?json.data:[];
+  STUDENT_COLUMN=raw.some(r=>Object.prototype.hasOwnProperty.call(r,STUDENT.name))?STUDENT.name:"Student";
   allData = raw.map((r,i)=>{
     const formatted = formatDate(r.Date);
     return { ...r, Date: formatted, ParsedDate: parseMDY(formatted), UID: String(r.UID??i) };
@@ -312,8 +358,8 @@ function useData(json, fromCache){
   };
 
   const activeRows = allData.filter(r=>!isVerified(r));
-  inProgressRows = activeRows.filter(r=>String(r.Andrew||"").trim()===STATUS_IN_PROGRESS);
-  followingUpRows = activeRows.filter(r=>String(r.Andrew||"").trim()===STATUS_FOLLOWING_UP);
+  inProgressRows = activeRows.filter(r=>String(getStudentStatus(r)||"").trim()===STATUS_IN_PROGRESS);
+  followingUpRows = activeRows.filter(r=>String(getStudentStatus(r)||"").trim()===STATUS_FOLLOWING_UP);
 
   if(!fromCache){
     const t = new Date();
