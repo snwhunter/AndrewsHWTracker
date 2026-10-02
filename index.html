@@ -137,26 +137,66 @@ onchange="applyHideWithoutDates(this.checked)">
 
 <script>
 
-const VERSION="5.8.0";
+const VERSION="5.9.0";
 const STUDENTS={
-  andrew:{
+  "0001":{
+    serial:"0001",
     name:"Andrew",
+    accessKey:"0001",
     apiUrl:"https://script.google.com/macros/s/AKfycbxtV0hB9582D511FEqV-jjWZ3fqRInNTYSdMiB2npYDYWB_5j_5PcungZVlkroVZRyL/exec"
   },
-  roper:{
+  "0002":{
+    serial:"0002",
     name:"Roper",
+    accessKey:"0002",
     apiUrl:"https://script.google.com/macros/s/AKfycbzz3dn1uvFfq0VYMjJ5Xq9fIzUOGMBJfVrIgMAEciBRxzx1r1VbIu-0mJa4XgMJ0TYIOw/exec"
   }
 };
-const studentParam=new URLSearchParams(window.location.search).get("student");
-const STUDENT_ID=String(studentParam||"andrew").trim().toLowerCase();
-const STUDENT=STUDENTS[STUDENT_ID]||STUDENTS.andrew;
+const STUDENT_ALIASES={andrew:"0001",roper:"0002"};
+const params=new URLSearchParams(window.location.search);
+const rawStudent=String(params.get("Student")||params.get("student")||"0001").trim().toLowerCase();
+const STUDENT_ID=STUDENTS[rawStudent]?rawStudent:(STUDENT_ALIASES[rawStudent]||"0001");
+const STUDENT=STUDENTS[STUDENT_ID];
 const API_URL=STUDENT.apiUrl;
 const CACHE_KEY=`hwTrackerCache:${STUDENT_ID}`;
+const ACCESS_KEY_CACHE=`hwTrackerAccess:${STUDENT_ID}`;
+let STUDENT_COLUMN=STUDENT.name;
+
+if(params.get("Student")!==STUDENT_ID || params.has("student")){
+  const canonical=new URL(window.location.href);
+  canonical.searchParams.delete("student");
+  canonical.searchParams.set("Student",STUDENT_ID);
+  window.history.replaceState({}, "", canonical);
+}
+
+function ensureStudentAccess(){
+  const saved=localStorage.getItem(ACCESS_KEY_CACHE);
+  if(saved===STUDENT.accessKey) return true;
+
+  const entered=window.prompt(`Enter the 4-digit access key for ${STUDENT.name} (${STUDENT_ID})`);
+  if(entered===null) return false;
+
+  const key=String(entered).trim();
+  if(!/^\d{4}$/.test(key) || key!==STUDENT.accessKey){
+    localStorage.removeItem(ACCESS_KEY_CACHE);
+    return false;
+  }
+
+  localStorage.setItem(ACCESS_KEY_CACHE,key);
+  return true;
+}
+
+function getStudentStatus(row){
+  return row?.[STUDENT_COLUMN] ?? row?.Student ?? "";
+}
+
+function setStudentStatus(row,value){
+  row[STUDENT_COLUMN]=value;
+}
 
 document.title=`${STUDENT.name}'s HW Dashboard`;
 document.getElementById("dashboardTitle").textContent=`${STUDENT.name}'s HW Dashboard`;
-document.getElementById("todoLink").href=`todo.html?student=${encodeURIComponent(STUDENT_ID)}`;
+document.getElementById("todoLink").href=`todo.html?Student=${encodeURIComponent(STUDENT_ID)}`;
 const SMART_CAPTURER_URL="https://smart-capturer-1025680092220.us-west1.run.app/capture";
 
 const STATUS_IN_PROGRESS="In-Progress";
@@ -293,7 +333,7 @@ return Boolean(match) && Number(match[2])>0 && Number(match[1])/Number(match[2])
 function isRowPastDue(row){
 const t=new Date(); t.setHours(0,0,0,0);
 return Boolean(row.ParsedDate) && row.ParsedDate<t &&
-(!isAndrewDone(row.Andrew) ||
+(!isAndrewDone(getStudentStatus(row)) ||
 !isCanvasComplete(row.Canvas) ||
 String(row.Verified)!=="true");
 }
@@ -301,8 +341,8 @@ String(row.Verified)!=="true");
 function getRowStatusRank(r){
 if(String(r.Verified)==="true" || isCanvasGradedAtLeast80(r.Canvas)) return 5;
 if(canvasContainsSubmitted(r.Canvas)) return 4;
-if(String(r.Andrew||"").toLowerCase()===STATUS_FOLLOWING_UP.toLowerCase()) return 3;
-if(String(r.Andrew||"").toLowerCase()===STATUS_SUBMITTED.toLowerCase()) return 2;
+if(String(getStudentStatus(r)||"").toLowerCase()===STATUS_FOLLOWING_UP.toLowerCase()) return 3;
+if(String(getStudentStatus(r)||"").toLowerCase()===STATUS_SUBMITTED.toLowerCase()) return 2;
 if(isRowPastDue(r)) return 1;
 return 0;
 }
@@ -348,7 +388,7 @@ function buildCurrentSummaryRow(){
     const className=String(r.Class||"Unassigned").trim()||"Unassigned";
     const isBeforeToday=r.ParsedDate && r.ParsedDate<today;
     const isVerified=String(r.Verified).toLowerCase()==="true";
-    const andrewStatus=String(r.Andrew||"").toLowerCase();
+    const andrewStatus=String(getStudentStatus(r)||"").toLowerCase();
 
     if(!classCounts[className]){
       classCounts[className]={
@@ -438,7 +478,7 @@ function updateSummary(){
     const className=String(r.Class||"Unassigned").trim()||"Unassigned";
     const isBeforeToday=r.ParsedDate && r.ParsedDate<today;
     const isVerified=String(r.Verified).toLowerCase()==="true";
-    const andrewStatus=String(r.Andrew||"").toLowerCase();
+    const andrewStatus=String(getStudentStatus(r)||"").toLowerCase();
 
     if(!classCounts[className]){
       classCounts[className]={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0};
@@ -547,7 +587,7 @@ getVisibleData().forEach(r=>{
 const className=String(r.Class||"Unassigned").trim()||"Unassigned";
 const isBeforeToday=Boolean(r.ParsedDate) && r.ParsedDate<today;
 const isVerified=String(r.Verified).toLowerCase()==="true";
-const andrewStatus=String(r.Andrew||"").trim().toLowerCase();
+const andrewStatus=String(getStudentStatus(r)||"").trim().toLowerCase();
 
 if(!classCounts[className]){
 classCounts[className]={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0};
@@ -674,7 +714,7 @@ render();
 function getVisibleData(){
 return windowData.filter(r=>{
 if(hideVerifiedRows && String(r.Verified)==="true") return false;
-if(hideFollowingUpRows && isAndrewFollowingUp(r.Andrew)) return false;
+if(hideFollowingUpRows && isAndrewFollowingUp(getStudentStatus(r))) return false;
 
 const canvasComplete=isCanvasComplete(r.Canvas);
 if(hideCanvasIncompleteRows && !canvasComplete) return false;
@@ -747,10 +787,10 @@ ${imageActionButtons(row)}
 <td>
 <select onchange="updateAndrew('${row.UID}',this.value)">
 <option></option>
-<option ${row.Andrew===STATUS_IN_PROGRESS?"selected":""}>In-Progress</option>
-<option ${row.Andrew===STATUS_FOLLOWING_UP?"selected":""}>Following-Up</option>
-<option ${row.Andrew==="Completed"?"selected":""}>Completed</option>
-<option ${row.Andrew===STATUS_SUBMITTED?"selected":""}>Submitted</option>
+<option ${getStudentStatus(row)===STATUS_IN_PROGRESS?"selected":""}>In-Progress</option>
+<option ${getStudentStatus(row)===STATUS_FOLLOWING_UP?"selected":""}>Following-Up</option>
+<option ${getStudentStatus(row)==="Completed"?"selected":""}>Completed</option>
+<option ${getStudentStatus(row)===STATUS_SUBMITTED?"selected":""}>Submitted</option>
 </select>
 </td>
 
@@ -785,10 +825,10 @@ mobileCards+=`
 <div style="margin-top:6px">
 <select onchange="updateAndrew('${row.UID}',this.value)">
 <option></option>
-<option ${row.Andrew===STATUS_IN_PROGRESS?"selected":""}>In-Progress</option>
-<option ${row.Andrew===STATUS_FOLLOWING_UP?"selected":""}>Following-Up</option>
-<option ${row.Andrew==="Completed"?"selected":""}>Completed</option>
-<option ${row.Andrew===STATUS_SUBMITTED?"selected":""}>Submitted</option>
+<option ${getStudentStatus(row)===STATUS_IN_PROGRESS?"selected":""}>In-Progress</option>
+<option ${getStudentStatus(row)===STATUS_FOLLOWING_UP?"selected":""}>Following-Up</option>
+<option ${getStudentStatus(row)==="Completed"?"selected":""}>Completed</option>
+<option ${getStudentStatus(row)===STATUS_SUBMITTED?"selected":""}>Submitted</option>
 </select>
 </div>
 
@@ -829,7 +869,7 @@ html+=`
 <th>Class</th>
 <th>Assignment</th>
 <th>Notes</th>
-<th>Andrew</th>
+<th>${STUDENT.name}</th>
 <th>Canvas</th>
 <th>Verified</th>
 </tr>
@@ -904,7 +944,7 @@ function updateAndrew(uid,value){
 const row=windowData.find(r=>r.UID===uid);
 if(!row) return;
 
-row.Andrew=value;
+setStudentStatus(row,value);
 
 triggerSave(row);
 
@@ -944,6 +984,11 @@ async function loadData(){
 
 const content=document.getElementById("content");
 
+if(!ensureStudentAccess()){
+  content.innerHTML=`Access key required for ${STUDENT.name} (${STUDENT_ID}). Refresh to try again.`;
+  return;
+}
+
 if(!API_URL){
   content.innerHTML=`No Apps Script URL is configured yet for ${STUDENT.name}.`;
   return;
@@ -981,6 +1026,7 @@ content.innerHTML="Failed to load data";
 function useData(json,fromCache){
 
 const raw=Array.isArray(json.data)?json.data:[];
+STUDENT_COLUMN=raw.some(r=>Object.prototype.hasOwnProperty.call(r,STUDENT.name))?STUDENT.name:"Student";
 latestGradesByClass=(json && typeof json.latestGrades==="object" && json.latestGrades!==null)
 ?json.latestGrades
 :{};
