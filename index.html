@@ -137,7 +137,7 @@ onchange="applyHideWithoutDates(this.checked)">
 
 <script>
 
-const VERSION="5.9.0";
+const VERSION="5.10.0";
 const STUDENTS={
   "0001":{
     serial:"0001",
@@ -472,6 +472,10 @@ function buildCurrentSummaryRow(){
 function updateSummary(){
 
   const today=new Date(); today.setHours(0,0,0,0);
+  const tomorrow=new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
+  const dayAfterTomorrow=new Date(tomorrow); dayAfterTomorrow.setDate(dayAfterTomorrow.getDate()+1);
+  const weekStart=new Date(today); weekStart.setDate(weekStart.getDate()-((weekStart.getDay()+1)%7));
+  const weekEnd=new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+7);
   const classCounts={};
 
   windowData.forEach(r=>{
@@ -481,12 +485,16 @@ function updateSummary(){
     const andrewStatus=String(getStudentStatus(r)||"").toLowerCase();
 
     if(!classCounts[className]){
-      classCounts[className]={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0};
+      classCounts[className]={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0,dueTomorrow:0,dueThisWeek:0};
     }
 
     const c=classCounts[className];
 
     c.labelTotal++;
+    const needsWork=!isVerified && !isCanvasComplete(r.Canvas) &&
+      !["completed", STATUS_SUBMITTED.toLowerCase(), STATUS_FOLLOWING_UP.toLowerCase()].includes(andrewStatus.trim());
+    if(needsWork && r.ParsedDate>=tomorrow && r.ParsedDate<dayAfterTomorrow) c.dueTomorrow++;
+    if(needsWork && r.ParsedDate>=weekStart && r.ParsedDate<weekEnd) c.dueThisWeek++;
     if(isBeforeToday) c.summaryTotal++;
 
     if(isBeforeToday && !isVerified) c.unverified++;
@@ -497,7 +505,7 @@ function updateSummary(){
 
   const classNames=sortClassNames(Object.keys(classCounts));
 
-  let totals={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0};
+  let totals={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0,dueTomorrow:0,dueThisWeek:0};
   let totalGradePoints=0;
   let totalGradeCount=0;
 
@@ -532,6 +540,8 @@ function updateSummary(){
     totals.unverified+=c.unverified;
     totals.summaryTotal+=c.summaryTotal;
     totals.labelTotal+=c.labelTotal;
+    totals.dueTomorrow+=c.dueTomorrow;
+    totals.dueThisWeek+=c.dueThisWeek;
 
     return `<tr>
 <td>${formatSummaryClassLabel(name)}</td>
@@ -539,6 +549,8 @@ function updateSummary(){
 <td>${pct(c.andrewFollowingUp,c.summaryTotal)}</td>
 <td>${pct(c.canvasIncomplete,c.summaryTotal)}</td>
 <td>${pct(c.unverified,c.summaryTotal)}</td>
+<td>${c.dueTomorrow}</td>
+<td>${c.dueThisWeek}</td>
 <td>${c.labelTotal}</td>
 <td>${escapeAttr(latestGradesByClass[name]??"")}</td>
 </tr>`;
@@ -556,6 +568,8 @@ function updateSummary(){
 <th>${formatSummaryHeaderLabel("Following-Up")}</th>
 <th>${formatSummaryHeaderLabel("Canvas Incomplete")}</th>
 <th>${formatSummaryHeaderLabel("Unverified")}</th>
+<th>Due Tomorrow</th>
+<th title="Saturday 00:00 to next Saturday 00:00 (exclusive)">Due This Week</th>
 <th>${formatSummaryHeaderLabel("Total")}</th>
 <th>${formatSummaryHeaderLabel("Grades")}</th>
 </tr>
@@ -568,6 +582,8 @@ ${rowsHtml}
 <td>${pct(totals.andrewFollowingUp,totals.summaryTotal)}</td>
 <td>${pct(totals.canvasIncomplete,totals.summaryTotal)}</td>
 <td>${pct(totals.unverified,totals.summaryTotal)}</td>
+<td>${totals.dueTomorrow}</td>
+<td>${totals.dueThisWeek}</td>
 <td>${totals.labelTotal}</td>
 <td>${allClassesGrade||"—"}</td>
 </tr>
