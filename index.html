@@ -137,7 +137,7 @@ onchange="applyHideWithoutDates(this.checked)">
 
 <script>
 
-const VERSION="5.10.3";
+const VERSION="5.10.4";
 const STUDENTS={
   "0001":{
     serial:"0001",
@@ -322,7 +322,9 @@ return value.includes(STATUS_SUBMITTED.toLowerCase());
 
 function isCanvasComplete(v){
 const value=String(v||"").toLowerCase();
-return value.trim().startsWith("[") || /\bgraded\s*>/.test(value) || canvasContainsSubmitted(value);
+const grade=value.match(/\bgraded\s*>?\s*(\d+(?:\.\d+)?)\s*\//);
+if(grade && Number(grade[1])===0) return false;
+return value.trim().startsWith("[") || canvasContainsSubmitted(value);
 }
 
 function isCanvasGradedAtLeast80(v){
@@ -491,7 +493,7 @@ function updateSummary(){
     const c=classCounts[className];
 
     c.labelTotal++;
-    const needsWork=!isCanvasComplete(r.Canvas);
+    const needsWork=!isVerified && !isCanvasComplete(r.Canvas);
     if(needsWork && r.ParsedDate && r.ParsedDate<dayAfterTomorrow) c.dueNow++;
     if(needsWork && r.ParsedDate && r.ParsedDate<weekEnd) c.dueThisWeek++;
     if(isBeforeToday) c.summaryTotal++;
