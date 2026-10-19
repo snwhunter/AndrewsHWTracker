@@ -137,7 +137,7 @@ onchange="applyHideWithoutDates(this.checked)">
 
 <script>
 
-const VERSION="5.10.2";
+const VERSION="5.10.3";
 const STUDENTS={
   "0001":{
     serial:"0001",
@@ -493,7 +493,7 @@ function updateSummary(){
     c.labelTotal++;
     const needsWork=!isCanvasComplete(r.Canvas);
     if(needsWork && r.ParsedDate && r.ParsedDate<dayAfterTomorrow) c.dueNow++;
-    if(needsWork && r.ParsedDate>=weekStart && r.ParsedDate<weekEnd) c.dueThisWeek++;
+    if(needsWork && r.ParsedDate && r.ParsedDate<weekEnd) c.dueThisWeek++;
     if(isBeforeToday) c.summaryTotal++;
 
     if(isBeforeToday && !isVerified) c.unverified++;
@@ -568,7 +568,7 @@ function updateSummary(){
 <th>${formatSummaryHeaderLabel("Canvas Incomplete")}</th>
 <th>${formatSummaryHeaderLabel("Unverified")}</th>
 <th>Due Now</th>
-<th title="Saturday 00:00 to next Saturday 00:00 (exclusive)">Due This Week</th>
+<th title="All overdue assignments plus assignments due this week, through next Saturday 00:00 (exclusive)">Due This Week</th>
 <th>${formatSummaryHeaderLabel("Total")}</th>
 <th>${formatSummaryHeaderLabel("Grades")}</th>
 </tr>
