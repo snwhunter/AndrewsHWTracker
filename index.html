@@ -137,7 +137,7 @@ onchange="applyHideWithoutDates(this.checked)">
 
 <script>
 
-const VERSION="5.10.0";
+const VERSION="5.10.1";
 const STUDENTS={
   "0001":{
     serial:"0001",
@@ -407,7 +407,7 @@ function buildCurrentSummaryRow(){
     if(isBeforeToday) c.summaryTotal++;
 
     if(isBeforeToday && !isVerified) c.unverified++;
-    if(isBeforeToday && !isVerified &&
+    if(isBeforeToday && !isVerified && !isCanvasComplete(r.Canvas) &&
        ![STATUS_SUBMITTED, STATUS_FOLLOWING_UP].map(s=>s.toLowerCase()).includes(andrewStatus))
        c.andrewTodo++;
 
@@ -485,27 +485,26 @@ function updateSummary(){
     const andrewStatus=String(getStudentStatus(r)||"").toLowerCase();
 
     if(!classCounts[className]){
-      classCounts[className]={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0,dueTomorrow:0,dueThisWeek:0};
+      classCounts[className]={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0,dueNow:0,dueThisWeek:0};
     }
 
     const c=classCounts[className];
 
     c.labelTotal++;
-    const needsWork=!isVerified && !isCanvasComplete(r.Canvas) &&
-      !["completed", STATUS_SUBMITTED.toLowerCase(), STATUS_FOLLOWING_UP.toLowerCase()].includes(andrewStatus.trim());
-    if(needsWork && r.ParsedDate>=tomorrow && r.ParsedDate<dayAfterTomorrow) c.dueTomorrow++;
+    const needsWork=!isCanvasComplete(r.Canvas);
+    if(needsWork && r.ParsedDate && r.ParsedDate<dayAfterTomorrow) c.dueNow++;
     if(needsWork && r.ParsedDate>=weekStart && r.ParsedDate<weekEnd) c.dueThisWeek++;
     if(isBeforeToday) c.summaryTotal++;
 
     if(isBeforeToday && !isVerified) c.unverified++;
-    if(isBeforeToday && !isVerified && ![STATUS_SUBMITTED, STATUS_FOLLOWING_UP].map(s=>s.toLowerCase()).includes(andrewStatus)) c.andrewTodo++;
+    if(isBeforeToday && !isVerified && !isCanvasComplete(r.Canvas) && ![STATUS_SUBMITTED, STATUS_FOLLOWING_UP].map(s=>s.toLowerCase()).includes(andrewStatus)) c.andrewTodo++;
     if(isBeforeToday && !isVerified && andrewStatus===STATUS_FOLLOWING_UP.toLowerCase()) c.andrewFollowingUp++;
     if(isBeforeToday && !isVerified && !isCanvasComplete(r.Canvas)) c.canvasIncomplete++;
   });
 
   const classNames=sortClassNames(Object.keys(classCounts));
 
-  let totals={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0,dueTomorrow:0,dueThisWeek:0};
+  let totals={andrewTodo:0,andrewFollowingUp:0,canvasIncomplete:0,unverified:0,summaryTotal:0,labelTotal:0,dueNow:0,dueThisWeek:0};
   let totalGradePoints=0;
   let totalGradeCount=0;
 
@@ -540,7 +539,7 @@ function updateSummary(){
     totals.unverified+=c.unverified;
     totals.summaryTotal+=c.summaryTotal;
     totals.labelTotal+=c.labelTotal;
-    totals.dueTomorrow+=c.dueTomorrow;
+    totals.dueNow+=c.dueNow;
     totals.dueThisWeek+=c.dueThisWeek;
 
     return `<tr>
@@ -549,7 +548,7 @@ function updateSummary(){
 <td>${pct(c.andrewFollowingUp,c.summaryTotal)}</td>
 <td>${pct(c.canvasIncomplete,c.summaryTotal)}</td>
 <td>${pct(c.unverified,c.summaryTotal)}</td>
-<td>${c.dueTomorrow}</td>
+<td>${c.dueNow}</td>
 <td>${c.dueThisWeek}</td>
 <td>${c.labelTotal}</td>
 <td>${escapeAttr(latestGradesByClass[name]??"")}</td>
@@ -568,7 +567,7 @@ function updateSummary(){
 <th>${formatSummaryHeaderLabel("Following-Up")}</th>
 <th>${formatSummaryHeaderLabel("Canvas Incomplete")}</th>
 <th>${formatSummaryHeaderLabel("Unverified")}</th>
-<th>Due Tomorrow</th>
+<th>Due Now</th>
 <th title="Saturday 00:00 to next Saturday 00:00 (exclusive)">Due This Week</th>
 <th>${formatSummaryHeaderLabel("Total")}</th>
 <th>${formatSummaryHeaderLabel("Grades")}</th>
@@ -582,7 +581,7 @@ ${rowsHtml}
 <td>${pct(totals.andrewFollowingUp,totals.summaryTotal)}</td>
 <td>${pct(totals.canvasIncomplete,totals.summaryTotal)}</td>
 <td>${pct(totals.unverified,totals.summaryTotal)}</td>
-<td>${totals.dueTomorrow}</td>
+<td>${totals.dueNow}</td>
 <td>${totals.dueThisWeek}</td>
 <td>${totals.labelTotal}</td>
 <td>${allClassesGrade||"—"}</td>
